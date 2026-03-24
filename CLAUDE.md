@@ -1,23 +1,35 @@
-# LogShield — Contexte projet
+# LogSanitizer — Project Context
 
 ## Architecture
-- Application SPA mono-fichier : `log-sanitizer.html`
-- Zéro dépendance NPM, Vanilla JS uniquement
+- Single-file SPA: `log-sanitizer.html`
+- Zero NPM dependencies, Vanilla JS only
 - Tailwind CSS via CDN Play
-- Servie par Apache sur CentOS 9 (HTTPS, port 443)
+- Served by Apache on CentOS 9 (HTTPS, port 443)
 
-## Structure du code (dans log-sanitizer.html)
-- `RULES_DICTIONARY` : tableau de règles regex (ligne ~180)
-- `SanitizationEngine` : classe moteur avec mapping cohérent
-- `CATEGORIES` / `STAT_META` : config UI des catégories
-- Contrôleur UI : fonctions de gestion de l'interface (bas du fichier)
+## Code structure (inside log-sanitizer.html)
+1. `RULES_DICTIONARY` : array of all regex rules
+2. `PROFILES_REGISTRY` : profiles registry (Standard, Tenable, Cloud…)
+3. `SanitizationEngine` : engine with consistent mapping
+4. `CATEGORIES` / `STAT_META` : UI category configuration
+5. UI Controller : interface management functions (bottom of file)
 
-## Pour ajouter une règle regex
-Ajouter un objet dans RULES_DICTIONARY avec : id, name, category,
-cssClass, prefix, regex, profiles, priority, et optionnellement
-validator et extractMatch.
+## Adding a regex rule
+Add an object to RULES_DICTIONARY with:
+- id, name, category, cssClass, prefix, regex, priority
+- (optional) validator: function to filter false positives
+- (optional) extractMatch: to capture a sub-group instead of the full match
+- Note: the `profiles` field is inherited from old rules and ignored by the engine
+
+Available categories: ip | email | key | path | user | hostname | cred
+
+## Adding a profile (e.g. Splunk, Trellix)
+Add an object to PROFILES_REGISTRY with:
+- id: unique identifier
+- name, icon, description: UI display
+- categories: array of categories to enable, or 'all'
+No changes to existing rules needed.
 
 ## Conventions
-- Commits en français, préfixés : feat:, fix:, docs:, refactor:
-- Tout doit rester dans un seul fichier HTML
-- Ne pas casser la compatibilité offline (pas de dépendance externe autre que Tailwind CDN)
+- Commits in English, prefixed: feat:, fix:, docs:, refactor:
+- Everything must stay in a single HTML file
+- Do not break offline compatibility (no external dependencies other than Tailwind CDN)

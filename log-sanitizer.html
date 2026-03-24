@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LogShield — Zero-Server Log Sanitizer</title>
+  <title>LogSanitizer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            // Palette "Terminal Noir" — esthétique cybersec/ops
+            // "Terminal Noir" palette — cybersec/ops aesthetic
             surface: { 50: '#f0fdf4', 100: '#0d1117', 200: '#161b22', 300: '#21262d', 400: '#30363d', 500: '#484f58', 600: '#8b949e' },
             accent: { green: '#39d353', cyan: '#58a6ff', orange: '#f0883e', red: '#f85149', purple: '#bc8cff', yellow: '#e3b341' },
           },
@@ -27,18 +27,18 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ========================================================
-       STYLES GLOBAUX & ANIMATIONS
+       GLOBAL STYLES & ANIMATIONS
        ======================================================== */
     * { box-sizing: border-box; }
     body { background: #0d1117; color: #c9d1d9; }
 
-    /* Scrollbar personnalisée */
+    /* Custom scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #161b22; }
     ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #484f58; }
 
-    /* Zone de drop */
+    /* Drop zone */
     .drop-zone { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .drop-zone.drag-over {
       border-color: #39d353 !important;
@@ -46,15 +46,16 @@
       box-shadow: 0 0 30px rgba(57, 211, 83, 0.1), inset 0 0 30px rgba(57, 211, 83, 0.03);
     }
 
-    /* Highlight des éléments sanitizés */
+    /* Sanitized element highlights */
     .san-ip { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border-radius: 3px; padding: 0 3px; }
     .san-email { background: rgba(188, 140, 255, 0.15); color: #bc8cff; border-radius: 3px; padding: 0 3px; }
     .san-path { background: rgba(240, 136, 62, 0.15); color: #f0883e; border-radius: 3px; padding: 0 3px; }
     .san-key { background: rgba(248, 81, 73, 0.15); color: #f85149; border-radius: 3px; padding: 0 3px; }
     .san-user { background: rgba(227, 179, 65, 0.15); color: #e3b341; border-radius: 3px; padding: 0 3px; }
     .san-hostname { background: rgba(57, 211, 83, 0.15); color: #39d353; border-radius: 3px; padding: 0 3px; }
+    .san-cred { background: rgba(34, 211, 238, 0.15); color: #22d3ee; border-radius: 3px; padding: 0 3px; }
 
-    /* Panneau de code */
+    /* Code panel */
     .code-panel {
       font-family: 'JetBrains Mono', monospace;
       font-size: 12.5px;
@@ -64,7 +65,7 @@
       tab-size: 4;
     }
 
-    /* Ligne numérotée */
+    /* Line numbers */
     .line-num {
       display: inline-block;
       width: 3.5em;
@@ -92,21 +93,21 @@
     }
     .toggle-track.active .toggle-knob { transform: translateX(16px); }
 
-    /* Barre de progression */
+    /* Progress bar */
     .progress-fill {
       height: 100%; border-radius: 2px;
       background: linear-gradient(90deg, #238636, #39d353);
       transition: width 0.3s ease;
     }
 
-    /* Animations d'entrée */
+    /* Entry animations */
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .animate-in { animation: fadeSlideUp 0.4s ease forwards; }
 
-    /* Pulse pour l'icône shield */
+    /* Icon pulse animation */
     @keyframes shieldPulse {
       0%, 100% { filter: drop-shadow(0 0 6px rgba(57, 211, 83, 0.3)); }
       50% { filter: drop-shadow(0 0 12px rgba(57, 211, 83, 0.6)); }
@@ -126,7 +127,7 @@
     }
     .tooltip:hover::after { opacity: 1; }
 
-    /* Badge stat animé */
+    /* Animated stat badge */
     .stat-badge {
       transition: all 0.3s ease;
     }
@@ -135,7 +136,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
-    /* Onglets */
+    /* Tabs */
     .tab-btn { transition: all 0.2s; }
     .tab-btn.active {
       color: #39d353;
@@ -151,18 +152,18 @@
   <header class="border-b border-surface-300 bg-surface-200/80 backdrop-blur-sm sticky top-0 z-50">
     <div class="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <!-- Logo Shield SVG -->
+        <!-- Shield logo SVG -->
         <svg class="w-8 h-8 shield-pulse" viewBox="0 0 32 32" fill="none">
           <path d="M16 2L4 8v8c0 7.73 5.12 14.96 12 16 6.88-1.04 12-8.27 12-16V8L16 2z" fill="none" stroke="#39d353" stroke-width="2"/>
           <path d="M12 16l3 3 5-6" stroke="#39d353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <div>
-          <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogShield</h1>
+          <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogSanitizer</h1>
           <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer</p>
         </div>
       </div>
       <div class="flex items-center gap-4">
-        <!-- Indicateur offline -->
+        <!-- Offline indicator -->
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-300/50 border border-surface-400">
           <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
           <span class="text-xs text-surface-600">100% Local</span>
@@ -172,40 +173,58 @@
   </header>
 
   <!-- ========================================================
-       CONTENU PRINCIPAL
+       MAIN CONTENT
        ======================================================== -->
   <main class="max-w-[1600px] mx-auto px-6 py-6">
 
-    <!-- BARRE DE CONTRÔLES -->
+    <!-- CONTROL BAR -->
     <div class="flex flex-wrap items-center gap-4 mb-6 animate-in" style="animation-delay: 0.1s">
 
-      <!-- Profil de nettoyage -->
+      <!-- Sanitization profile -->
       <div class="flex items-center gap-2">
-        <label class="text-xs text-surface-600 uppercase tracking-wider font-medium">Profil</label>
+        <label class="text-xs text-surface-600 uppercase tracking-wider font-medium">Profile</label>
         <select id="profileSelect"
           class="bg-surface-300 border border-surface-400 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-accent-cyan cursor-pointer">
-          <option value="standard">🛡️ Standard (toutes les règles)</option>
-          <option value="network">🌐 Réseau (IPs, hostnames, ports)</option>
-          <option value="applicatif">⚙️ Applicatif (users, sessions, paths)</option>
-          <option value="cloud">☁️ Cloud (clés API, ARN, endpoints)</option>
+          <!-- Dynamically populated by initProfileSelect() -->
         </select>
+        <button onclick="openProfileManager()"
+          class="tooltip px-2.5 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-accent-cyan transition-all"
+          data-tip="Manage profiles">
+          ⚙
+        </button>
       </div>
 
-      <!-- Séparateur -->
+      <!-- Separator -->
       <div class="w-px h-8 bg-surface-400"></div>
 
-      <!-- Toggles catégories -->
+      <!-- Rules manager -->
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-surface-600 uppercase tracking-wider font-medium">Rules</label>
+        <button onclick="openRulesManager()"
+          class="tooltip flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-accent-cyan transition-all"
+          data-tip="View and manage detection rules">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" d="M2 4h12M2 8h8M2 12h5"/>
+          </svg>
+          <span id="rulesCountBadge" class="text-xs font-mono">—</span>
+        </button>
+      </div>
+
+      <!-- Separator -->
+      <div class="w-px h-8 bg-surface-400"></div>
+
+      <!-- Category toggles -->
       <div id="categoryToggles" class="flex flex-wrap items-center gap-3">
-        <!-- Rempli dynamiquement par JS -->
+        <!-- Dynamically populated by JS -->
       </div>
 
       <!-- Spacer -->
       <div class="flex-1"></div>
 
-      <!-- Boutons d'action -->
+      <!-- Action buttons -->
       <button id="btnReset" onclick="resetAll()"
         class="px-4 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-surface-500 transition-all">
-        Réinitialiser
+        Reset
       </button>
       <button id="btnExportMapping" onclick="exportMapping()" disabled
         class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
@@ -213,11 +232,11 @@
       </button>
       <button id="btnExport" onclick="exportSanitized()" disabled
         class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/30 text-accent-green hover:bg-accent-green/30 transition-all font-medium disabled:opacity-30 disabled:cursor-not-allowed">
-        ⬇ Télécharger le fichier nettoyé
+        ⬇ Download sanitized file
       </button>
     </div>
 
-    <!-- ZONE DRAG & DROP / PASTE -->
+    <!-- DRAG & DROP / PASTE ZONE -->
     <div id="dropZone" class="drop-zone border-2 border-dashed border-surface-400 rounded-xl p-8 mb-6 text-center cursor-pointer animate-in" style="animation-delay: 0.2s"
       onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" class="hidden" accept=".txt,.log,.json,.csv,.xml,.yaml,.yml" multiple>
@@ -227,20 +246,20 @@
           <path d="M24 18v12M18 24h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
         <div>
-          <p class="text-surface-600 text-sm">Glissez vos fichiers ici ou <span class="text-accent-cyan underline">parcourez</span></p>
-          <p class="text-surface-500 text-xs mt-1">.txt, .log, .json, .csv, .xml, .yaml — ou collez du texte avec le bouton ci-dessous</p>
+          <p class="text-surface-600 text-sm">Drop your files here or <span class="text-accent-cyan underline">browse</span></p>
+          <p class="text-surface-500 text-xs mt-1">.txt, .log, .json, .csv, .xml, .yaml — or paste text using the button below</p>
         </div>
         <button onclick="event.stopPropagation(); openPasteModal()"
           class="mt-2 px-4 py-2 text-xs rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-accent-cyan transition-all">
-          📋 Coller du texte brut
+          📋 Paste raw text
         </button>
       </div>
     </div>
 
-    <!-- BARRE DE PROGRESSION (cachée par défaut) -->
+    <!-- PROGRESS BAR (hidden by default) -->
     <div id="progressBar" class="hidden mb-4 animate-in">
       <div class="flex items-center justify-between mb-1">
-        <span class="text-xs text-surface-600" id="progressLabel">Analyse en cours...</span>
+        <span class="text-xs text-surface-600" id="progressLabel">Analyzing...</span>
         <span class="text-xs text-accent-green font-mono" id="progressPercent">0%</span>
       </div>
       <div class="w-full h-1.5 bg-surface-300 rounded-full overflow-hidden">
@@ -248,53 +267,53 @@
       </div>
     </div>
 
-    <!-- PANNEAU DE STATISTIQUES -->
+    <!-- STATISTICS PANEL -->
     <div id="statsPanel" class="hidden mb-6 animate-in">
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3" id="statsGrid">
-        <!-- Rempli dynamiquement -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3" id="statsGrid">
+        <!-- Dynamically populated -->
       </div>
     </div>
 
-    <!-- VUE SPLIT : ORIGINAL vs SANITIZED -->
+    <!-- SPLIT VIEW: ORIGINAL vs SANITIZED -->
     <div id="splitView" class="hidden animate-in">
-      <!-- Onglets -->
+      <!-- Tabs -->
       <div class="flex items-center border-b border-surface-300 mb-0">
         <button class="tab-btn active px-4 py-2.5 text-sm font-medium border-b-2 border-transparent"
           onclick="switchTab('split')" data-tab="split">
-          Côte à côte
+          Side by side
         </button>
         <button class="tab-btn px-4 py-2.5 text-sm font-medium text-surface-600 border-b-2 border-transparent"
           onclick="switchTab('sanitized')" data-tab="sanitized">
-          Résultat seul
+          Result only
         </button>
         <button class="tab-btn px-4 py-2.5 text-sm font-medium text-surface-600 border-b-2 border-transparent"
           onclick="switchTab('mapping')" data-tab="mapping">
-          Table de mapping
+          Mapping table
         </button>
-        <!-- Info fichier -->
+        <!-- File info -->
         <div class="ml-auto flex items-center gap-2 px-3">
           <span class="text-xs text-surface-500 font-mono" id="fileInfo"></span>
         </div>
       </div>
 
-      <!-- Conteneur des panneaux -->
+      <!-- Panel container -->
       <div class="bg-surface-200 border border-surface-300 border-t-0 rounded-b-xl overflow-hidden">
 
         <!-- Tab: Split View -->
         <div id="tabSplit" class="tab-content grid grid-cols-2 divide-x divide-surface-300" style="height: 65vh;">
-          <div class="flex flex-col">
-            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2">
+          <div class="flex flex-col min-h-0">
+            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2 flex-shrink-0">
               <span class="w-2 h-2 rounded-full bg-surface-500"></span>
               <span class="text-xs font-medium text-surface-600 uppercase tracking-wider">Original</span>
             </div>
-            <div id="panelOriginal" class="code-panel flex-1 overflow-auto p-4 text-surface-600"></div>
+            <div id="panelOriginal" class="code-panel min-h-0 flex-1 overflow-auto p-4 text-surface-600"></div>
           </div>
-          <div class="flex flex-col">
-            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2">
+          <div class="flex flex-col min-h-0">
+            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2 flex-shrink-0">
               <span class="w-2 h-2 rounded-full bg-accent-green"></span>
-              <span class="text-xs font-medium text-surface-600 uppercase tracking-wider">Sanitizé</span>
+              <span class="text-xs font-medium text-surface-600 uppercase tracking-wider">Sanitized</span>
             </div>
-            <div id="panelSanitized" class="code-panel flex-1 overflow-auto p-4"></div>
+            <div id="panelSanitized" class="code-panel min-h-0 flex-1 overflow-auto p-4"></div>
           </div>
         </div>
 
@@ -309,8 +328,8 @@
             <thead class="sticky top-0 bg-surface-300">
               <tr>
                 <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Tag</th>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Valeur originale</th>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Catégorie</th>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Original value</th>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Category</th>
                 <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Occurrences</th>
               </tr>
             </thead>
@@ -323,88 +342,174 @@
   </main>
 
   <!-- ========================================================
-       MODAL PASTE
+       PASTE MODAL
        ======================================================== -->
   <div id="pasteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="bg-surface-200 border border-surface-400 rounded-xl w-full max-w-2xl p-6 mx-4">
-      <h3 class="text-white font-medium mb-3">Coller du texte brut</h3>
+      <h3 class="text-white font-medium mb-3">Paste raw text</h3>
       <textarea id="pasteArea"
         class="w-full h-64 bg-surface-100 border border-surface-400 rounded-lg p-4 font-mono text-sm text-surface-600 focus:outline-none focus:border-accent-cyan resize-none"
-        placeholder="Collez votre contenu de log ici..."></textarea>
+        placeholder="Paste your log content here..."></textarea>
       <div class="flex justify-end gap-3 mt-4">
         <button onclick="closePasteModal()"
           class="px-4 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white transition-all">
-          Annuler
+          Cancel
         </button>
         <button onclick="processPastedText()"
           class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/30 text-accent-green hover:bg-accent-green/30 transition-all font-medium">
-          Analyser
+          Analyze
         </button>
       </div>
     </div>
   </div>
 
   <!-- ========================================================
-       JAVASCRIPT — MOTEUR DE SANITIZATION
+       PROFILE MANAGER MODAL
+       ======================================================== -->
+  <div id="profileManagerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-surface-200 border border-surface-400 rounded-xl w-full max-w-3xl mx-4 flex flex-col" style="max-height: 85vh;">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-surface-300 flex-shrink-0">
+        <div>
+          <h3 class="text-white font-semibold">Profile Manager</h3>
+          <p class="text-xs text-surface-500 mt-0.5">Built-in profiles are read-only. Create custom profiles to fit your needs.</p>
+        </div>
+        <button onclick="closeProfileManager()"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-surface-500 hover:text-white hover:bg-surface-300 transition-all">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div class="flex flex-1 overflow-hidden">
+
+        <!-- Left: profile list -->
+        <div class="w-52 border-r border-surface-300 flex flex-col flex-shrink-0">
+          <div class="p-3 border-b border-surface-300">
+            <button onclick="newProfile()"
+              class="w-full px-3 py-2 text-xs rounded-lg border border-accent-green/40 text-accent-green hover:bg-accent-green/10 transition-all font-medium">
+              + New profile
+            </button>
+          </div>
+          <div class="flex-1 overflow-auto py-1" id="profileManagerList">
+            <!-- Populated by renderProfileManagerList() -->
+          </div>
+        </div>
+
+        <!-- Right: editor -->
+        <div class="flex-1 overflow-auto" id="profileEditorPanel">
+          <p class="text-surface-500 text-sm text-center mt-12">Select a profile to view or edit,<br>or create a new one.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       RULES MANAGER MODAL
+       ======================================================== -->
+  <div id="rulesManagerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-surface-200 border border-surface-400 rounded-xl w-full max-w-4xl mx-4 flex flex-col" style="max-height: 88vh;">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-surface-300 flex-shrink-0">
+        <div>
+          <h3 class="text-white font-semibold">Rules Manager</h3>
+          <p class="text-xs text-surface-500 mt-0.5">View built-in detection rules and create custom ones. Custom rules are stored in your browser.</p>
+        </div>
+        <button onclick="closeRulesManager()"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-surface-500 hover:text-white hover:bg-surface-300 transition-all">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div class="flex flex-1 overflow-hidden">
+
+        <!-- Left: rule list -->
+        <div class="w-56 border-r border-surface-300 flex flex-col flex-shrink-0">
+          <div class="p-3 space-y-2 border-b border-surface-300">
+            <button onclick="newRule()"
+              class="w-full px-3 py-2 text-xs rounded-lg border border-accent-green/40 text-accent-green hover:bg-accent-green/10 transition-all font-medium">
+              + New rule
+            </button>
+            <select id="rulesCategoryFilter" onchange="renderRulesList()"
+              class="w-full bg-surface-300 border border-surface-400 text-xs text-surface-600 rounded-lg px-2 py-1.5 focus:outline-none focus:border-accent-cyan cursor-pointer">
+              <option value="">All categories</option>
+              <!-- Populated by initRulesManager() -->
+            </select>
+          </div>
+          <div class="flex-1 overflow-auto py-1" id="rulesManagerList">
+            <!-- Populated by renderRulesList() -->
+          </div>
+        </div>
+
+        <!-- Right: editor + live tester -->
+        <div class="flex-1 overflow-auto" id="rulesEditorPanel">
+          <p class="text-surface-500 text-sm text-center mt-12">Select a rule to inspect,<br>or create a new one.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       JAVASCRIPT — SANITIZATION ENGINE
        ======================================================== -->
   <script>
   /**
    * =============================================================
-   * LOGSHIELD — MOTEUR DE SANITIZATION ZERO-SERVER
+   * LOGSANITIZER — ZERO-SERVER SANITIZATION ENGINE
    * =============================================================
    *
-   * Architecture :
-   *   1. RULES_DICTIONARY : Toutes les règles de détection regex
-   *   2. SanitizationEngine : Moteur avec mapping cohérent
-   *   3. UI Controller : Gestion de l'interface
+   * Architecture:
+   *   1. RULES_DICTIONARY : All regex detection rules
+   *   2. SanitizationEngine : Engine with consistent mapping
+   *   3. UI Controller : Interface management
    *
-   * Pour ajouter une nouvelle règle :
-   *   → Ajoutez un objet dans RULES_DICTIONARY avec :
-   *     - id: identifiant unique (string)
-   *     - name: nom lisible
-   *     - category: catégorie d'affichage
-   *     - cssClass: classe CSS pour le highlight (san-xxx)
-   *     - prefix: préfixe du tag de remplacement (ex: "IP")
-   *     - regex: expression régulière (avec flag 'g')
-   *     - profiles: tableau des profils qui activent cette règle
-   *     - priority: ordre d'exécution (plus bas = exécuté en premier)
-   *     - validator: (optionnel) fonction pour filtrer les faux positifs
+   * To add a new rule:
+   *   → Add an object to RULES_DICTIONARY with:
+   *     - id: unique identifier (string)
+   *     - name: human-readable name
+   *     - category: display category
+   *     - cssClass: CSS class for highlight (san-xxx)
+   *     - prefix: replacement tag prefix (e.g. "IP")
+   *     - regex: regular expression (with 'g' flag)
+   *     - profiles: array of profiles that enable this rule
+   *     - priority: execution order (lower = runs first)
+   *     - validator: (optional) function to filter false positives
    */
 
   // =============================================================
-  // 1. DICTIONNAIRE DE RÈGLES
+  // 1. RULES DICTIONARY
   // =============================================================
-  // IMPORTANT : l'ordre d'exécution est déterminé par `priority`.
-  // Les règles avec les priorités les plus basses s'exécutent en
-  // premier. L'IPv6 doit être traitée AVANT l'IPv4 pour éviter
-  // de capturer partiellement des segments IPv6.
+  // IMPORTANT: execution order is determined by `priority`.
+  // Rules with lower priority values run first. IPv6 must be
+  // processed BEFORE IPv4 to avoid partially matching IPv6 segments.
 
   const RULES_DICTIONARY = [
 
-    // --- ADRESSES IP ---
+    // --- IP ADDRESSES ---
     {
       id: 'ipv6',
-      name: 'Adresses IPv6',
+      name: 'IPv6 Addresses',
       category: 'ip',
       cssClass: 'san-ip',
       prefix: 'IPv6',
       profiles: ['standard', 'network', 'cloud'],
       priority: 10,
-      // Capture les formats IPv6 courants (complets, abrégés, mappés IPv4)
+      // Matches common IPv6 formats (full, abbreviated, IPv4-mapped)
       regex: /(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9]))/g,
     },
     {
       id: 'ipv4',
-      name: 'Adresses IPv4',
+      name: 'IPv4 Addresses',
       category: 'ip',
       cssClass: 'san-ip',
       prefix: 'IP',
       profiles: ['standard', 'network', 'cloud'],
       priority: 20,
       regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
-      // Filtre les faux positifs comme les numéros de version (1.2.3.4)
+      // Filters false positives like version numbers (1.2.3.4)
       validator: (match, context) => {
-        // Exclure si précédé de "version", "v", ou "=" suivi immédiatement
+        // Exclude if preceded by "version", "v", or "=" immediately before
         const beforeIdx = context.lastIndexOf('\n', context.indexOf(match)) + 1;
         const lineBefore = context.substring(beforeIdx, context.indexOf(match)).toLowerCase();
         if (/(?:version|ver\.?|v)\s*$/.test(lineBefore)) return false;
@@ -412,10 +517,10 @@
       }
     },
 
-    // --- ADRESSES EMAIL ---
+    // --- EMAIL ADDRESSES ---
     {
       id: 'email',
-      name: 'Adresses e-mail',
+      name: 'Email Addresses',
       category: 'email',
       cssClass: 'san-email',
       prefix: 'EMAIL',
@@ -424,21 +529,21 @@
       regex: /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g,
     },
 
-    // --- CLÉS API / TOKENS / SECRETS ---
+    // --- API KEYS / TOKENS / SECRETS ---
     {
       id: 'aws_key',
-      name: 'Clés AWS',
+      name: 'AWS Keys',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'AWS_KEY',
       profiles: ['standard', 'cloud'],
       priority: 40,
-      // Format: AKIA suivi de 16 caractères alphanumériques
+      // Format: AKIA followed by 16 alphanumeric characters
       regex: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g,
     },
     {
       id: 'aws_arn',
-      name: 'ARN AWS',
+      name: 'AWS ARNs',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'ARN',
@@ -448,15 +553,15 @@
     },
     {
       id: 'generic_api_key',
-      name: 'Clés API génériques',
+      name: 'Generic API Keys',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'API_KEY',
       profiles: ['standard', 'applicatif', 'cloud'],
       priority: 45,
-      // Détecte les patterns "api_key=xxx", "token: xxx", "secret=xxx", "password=xxx", etc.
+      // Detects patterns like "api_key=xxx", "token: xxx", "secret=xxx", "password=xxx", etc.
       regex: /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer|secret[_-]?key|private[_-]?key|client[_-]?secret|password|passwd|pwd)[\s]*[=:]\s*["']?([a-zA-Z0-9\-_.~+\/]{16,})["']?/gi,
-      // Pour cette règle, on capture le groupe 1 (la valeur) séparément
+      // For this rule, capture group 1 (the value) separately
       extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
     },
     {
@@ -471,29 +576,29 @@
     },
     {
       id: 'jwt_token',
-      name: 'Tokens JWT',
+      name: 'JWT Tokens',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'JWT',
       profiles: ['standard', 'applicatif', 'cloud'],
       priority: 47,
-      // Format JWT : 3 segments base64url séparés par des points
+      // JWT format: 3 base64url segments separated by dots
       regex: /\beyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\b/g,
     },
     {
       id: 'high_entropy_hex',
-      name: 'Tokens hexadécimaux (entropie haute)',
+      name: 'Hex Tokens (high entropy)',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'TOKEN',
       profiles: ['standard', 'applicatif', 'cloud'],
       priority: 48,
-      // Séquences hex de 32+ caractères (API keys, session IDs, hashes)
+      // Hex sequences of 32+ characters (API keys, session IDs, hashes)
       regex: /\b[a-fA-F0-9]{32,}\b/g,
       validator: (match) => {
-        // Vérifier que ce n'est pas un UUID (traité séparément) ou un hash courant trop court
-        if (/^[0-9]+$/.test(match)) return false; // Nombres purs
-        // Vérifier une entropie minimum (pas que des 0 ou des f)
+        // Exclude UUIDs (handled separately) and plain numbers
+        if (/^[0-9]+$/.test(match)) return false;
+        // Require minimum entropy (not all 0s or fs)
         const unique = new Set(match.toLowerCase()).size;
         return unique >= 6;
       }
@@ -510,21 +615,21 @@
     },
     {
       id: 'session_id',
-      name: 'IDs de session',
+      name: 'Session IDs',
       category: 'key',
       cssClass: 'san-key',
       prefix: 'SESSION',
       profiles: ['standard', 'applicatif'],
       priority: 49,
-      // Pattern : session_id=xxx, JSESSIONID=xxx, sid=xxx, phpsessid=xxx
+      // Pattern: session_id=xxx, JSESSIONID=xxx, sid=xxx, phpsessid=xxx
       regex: /(?:session[_-]?id|jsessionid|phpsessid|sid|sess)[\s]*[=:]\s*["']?([a-zA-Z0-9\-_.~+\/]{8,})["']?/gi,
       extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
     },
 
-    // --- CHEMINS DE FICHIERS ---
+    // --- FILE PATHS ---
     {
       id: 'path_windows',
-      name: 'Chemins Windows',
+      name: 'Windows Paths',
       category: 'path',
       cssClass: 'san-path',
       prefix: 'PATH',
@@ -534,18 +639,18 @@
     },
     {
       id: 'path_unix',
-      name: 'Chemins Unix',
+      name: 'Unix Paths',
       category: 'path',
       cssClass: 'san-path',
       prefix: 'PATH',
       profiles: ['standard', 'applicatif'],
       priority: 61,
-      // Chemins commençant par / avec au moins 2 segments
+      // Paths starting with / and at least 2 segments
       regex: /(?:\/(?:home|var|etc|opt|usr|tmp|srv|mnt|root|proc|sys|dev|log|data|app|config|backup)[^\s,;)}\]"']+)/gi,
     },
     {
       id: 'unc_path',
-      name: 'Chemins UNC',
+      name: 'UNC Paths',
       category: 'path',
       cssClass: 'san-path',
       prefix: 'UNC',
@@ -554,35 +659,36 @@
       regex: /\\\\[^\s\\]+(?:\\[^\s\\]+)+/g,
     },
 
-    // --- NOMS D'UTILISATEURS ---
+    // --- USERNAMES ---
     {
       id: 'username_pattern',
-      name: "Noms d'utilisateur (patterns)",
+      name: 'Usernames (patterns)',
       category: 'user',
       cssClass: 'san-user',
       prefix: 'USER',
       profiles: ['standard', 'applicatif'],
       priority: 70,
-      // Détecte user=xxx, login=xxx, username:xxx, account:xxx, etc.
+      // Detects user=xxx, login=xxx, username:xxx, account:xxx, etc.
       regex: /(?:user(?:name)?|login|account|owner|author|created[_-]?by|modified[_-]?by|assignee|admin|operator|caller)[\s]*[=:]\s*["']?([a-zA-Z0-9._\-@]{2,40})["']?/gi,
       extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
     },
 
-    // --- HOSTNAMES / DOMAINES ---
+    // --- HOSTNAMES / DOMAINS ---
     {
       id: 'hostname',
-      name: 'Hostnames / Domaines internes',
+      name: 'Hostnames / Internal Domains',
       category: 'hostname',
       cssClass: 'san-hostname',
       prefix: 'HOST',
       profiles: ['standard', 'network', 'cloud'],
       priority: 80,
-      // Détecte les noms d'hôtes internes (xxx.internal, xxx.local, srv-xxx, etc.)
-      regex: /\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+(?:internal|local|corp|intranet|lan|private|home|test|dev|staging|prod)\b/gi,
+      // Detects internal hostnames ending with a known private/enterprise TLD.
+      // Common additions: .int (NATO/enterprise), .ad (Active Directory), .mil, .dom, .domain
+      regex: /\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+(?:internal|local|corp|intranet|lan|private|home|test|dev|staging|prod|int|ad|mil|dom|domain)\b/gi,
     },
     {
       id: 'url',
-      name: 'URLs complètes',
+      name: 'Full URLs',
       category: 'hostname',
       cssClass: 'san-hostname',
       prefix: 'URL',
@@ -594,7 +700,7 @@
     // --- MAC ADDRESSES ---
     {
       id: 'mac_address',
-      name: 'Adresses MAC',
+      name: 'MAC Addresses',
       category: 'ip',
       cssClass: 'san-ip',
       prefix: 'MAC',
@@ -602,11 +708,129 @@
       priority: 25,
       regex: /\b(?:[0-9a-fA-F]{2}[:\-]){5}[0-9a-fA-F]{2}\b/g,
     },
+
+    // --- WINDOWS DOMAIN\USER ACCOUNTS ---
+    {
+      id: 'windows_domain_user',
+      name: 'Windows DOMAIN\\User Accounts',
+      category: 'user',
+      cssClass: 'san-user',
+      prefix: 'USER',
+      priority: 71,
+      // Standard DOMAIN\user format in Windows/Nessus authentication logs
+      regex: /\b[A-Za-z0-9_\-]{2,20}\\[a-zA-Z0-9._\-]{2,40}\b/g,
+      validator: (match) => {
+        // Exclude UNC paths (\\server\share) — already handled by unc_path
+        if (match.startsWith('\\')) return false;
+        return true;
+      }
+    },
+
+    // --- NESSUS / TENABLE SPECIFIC ---
+    {
+      id: 'nessus_host_info',
+      name: 'NetBIOS / DNS Name (Nessus output)',
+      category: 'hostname',
+      cssClass: 'san-hostname',
+      prefix: 'HOST',
+      priority: 83,
+      // Matches Nessus plugin output lines: "NetBIOS name : SERVER01", "DNS Name : host.corp"
+      regex: /(?:NetBIOS\s+(?:Computer\s+)?[Nn]ame|DNS\s+[Nn]ame|[Cc]ommon\s+[Nn]ame|[Hh]ostname)\s*:\s*([^\s,\n\r]+)/g,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+    {
+      id: 'scan_credentials',
+      name: 'Scan Credentials (SSH/SMB/WMI)',
+      category: 'cred',
+      cssClass: 'san-cred',
+      prefix: 'CRED',
+      priority: 50,
+      // Credential patterns in Nessus configs/logs: smb_login=admin, ssh_password=xxx
+      regex: /(?:smb|ssh|wmi|telnet|rsh|rdp|ftp)(?:_login|_password|_username|_pass|_user)\s*[=:]\s*["']?([^\s"'\n\r]{2,80})["']?/gi,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+    {
+      id: 'snmp_community',
+      name: 'SNMP Community Strings',
+      category: 'cred',
+      cssClass: 'san-cred',
+      prefix: 'SNMP',
+      priority: 51,
+      // SNMP community string commonly found in Nessus network scans
+      regex: /(?:community\s+string|snmp[_\-]?community|community[_\-]?name)\s*[=:]\s*["']?([a-zA-Z0-9_\-@!#$%^&*]{1,40})["']?/gi,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
   ];
 
 
   // =============================================================
-  // 2. MOTEUR DE SANITIZATION
+  // 2. PROFILES REGISTRY
+  // =============================================================
+  // To create a custom profile (e.g. Splunk, Trellix),
+  // simply add an object to this array.
+  //
+  // Fields:
+  //   - id          : unique identifier (string, no spaces)
+  //   - name        : name shown in the menu
+  //   - icon        : emoji or short text
+  //   - description : subtitle shown in the select
+  //   - categories  : array of categories to enable,
+  //                   or the string 'all' to enable all.
+  //                   Available categories:
+  //                   'ip', 'email', 'key', 'path', 'user', 'hostname', 'cred'
+  //
+  // Rules from RULES_DICTIONARY are included automatically
+  // if their `category` appears in this array.
+
+  const PROFILES_REGISTRY = [
+    {
+      id: 'standard',
+      name: 'Standard',
+      icon: '🛡️',
+      description: 'Maximum protection — all rules',
+      categories: 'all',
+    },
+    {
+      id: 'network',
+      name: 'Network',
+      icon: '🌐',
+      description: 'IPs, MAC, hostnames, URLs',
+      categories: ['ip', 'hostname'],
+    },
+    {
+      id: 'applicatif',
+      name: 'Application',
+      icon: '⚙️',
+      description: 'Users, sessions, paths, tokens',
+      categories: ['user', 'path', 'key', 'email'],
+    },
+    {
+      id: 'cloud',
+      name: 'Cloud',
+      icon: '☁️',
+      description: 'API keys, ARNs, cloud endpoints',
+      categories: ['key', 'hostname', 'ip', 'email'],
+    },
+    {
+      id: 'tenable',
+      name: 'Tenable / Nessus',
+      icon: '🔬',
+      description: 'SecurityCenter & Nessus Scanner',
+      categories: ['ip', 'key', 'user', 'hostname', 'cred'],
+    },
+    // ─── Add your profiles here ────────────────────────────────
+    // {
+    //   id: 'splunk',
+    //   name: 'Splunk',
+    //   icon: '📊',
+    //   description: 'Splunk logs — index, sourcetype, credentials',
+    //   categories: ['user', 'key', 'hostname', 'ip', 'cred'],
+    // },
+  ];
+
+
+  // =============================================================
+  // 2. SANITIZATION ENGINE
   // =============================================================
 
   class SanitizationEngine {
@@ -615,20 +839,20 @@
     }
 
     /**
-     * Réinitialise l'état du moteur (mappings, compteurs, etc.)
+     * Resets the engine state (mappings, counters, etc.)
      */
     reset() {
-      // Map: valeur originale → { tag, category, cssClass, count }
+      // Map: original value → { tag, category, cssClass, count }
       this.mappings = new Map();
-      // Compteurs par catégorie pour générer les tags séquentiels
+      // Per-prefix counters for generating sequential tags
       this.counters = {};
-      // Stats de remplacement par catégorie
+      // Replacement stats per category
       this.stats = {};
     }
 
     /**
-     * Obtient ou crée un tag anonymisé pour une valeur donnée.
-     * Garantit la cohérence : même valeur → même tag.
+     * Gets or creates an anonymized tag for a given value.
+     * Guarantees consistency: same value → same tag.
      */
     getOrCreateTag(value, rule) {
       const normalizedValue = value.trim();
@@ -638,7 +862,7 @@
         return entry.tag;
       }
 
-      // Incrémente le compteur pour cette catégorie de préfixe
+      // Increment the counter for this prefix category
       if (!this.counters[rule.prefix]) {
         this.counters[rule.prefix] = 0;
       }
@@ -657,30 +881,34 @@
     }
 
     /**
-     * Lance la sanitization du texte avec les règles actives.
-     * @param {string} text - Contenu brut du log
-     * @param {string} profile - Profil de nettoyage sélectionné
-     * @param {Set} disabledCategories - Catégories désactivées par l'utilisateur
-     * @param {Function} onProgress - Callback de progression (0-100)
+     * Runs sanitization on the text using active rules.
+     * @param {string} text - Raw log content
+     * @param {string} profile - Selected sanitization profile
+     * @param {Set} disabledCategories - Categories disabled by the user
+     * @param {Function} onProgress - Progress callback (0-100)
      * @returns {{ sanitized: string, highlighted: string }}
      */
     sanitize(text, profile, disabledCategories, onProgress) {
       this.reset();
       this.stats = {};
 
-      // Filtre et trie les règles actives
-      const activeRules = RULES_DICTIONARY
-        .filter(r => r.profiles.includes(profile))
-        .filter(r => !disabledCategories.has(r.category))
+      // Filter and sort active rules based on the selected profile
+      const profileDef = getAllProfiles().find(p => p.id === profile) || PROFILES_REGISTRY[0];
+      const activeRules = getAllRules()
+        .filter(r => {
+          if (disabledCategories.has(r.category)) return false;
+          if (profileDef.categories === 'all') return true;
+          return profileDef.categories.includes(r.category);
+        })
         .sort((a, b) => a.priority - b.priority);
 
       let result = text;
       const totalRules = activeRules.length;
 
       // -------------------------------------------------------
-      // PASSE 1 : Détection et construction du mapping
-      // On parcourt le texte avec chaque règle pour identifier
-      // toutes les valeurs sensibles et leur attribuer un tag.
+      // PASS 1: Detection and mapping construction
+      // Scan the text with each rule to identify all sensitive
+      // values and assign them a replacement tag.
       // -------------------------------------------------------
       const allReplacements = []; // { start, end, tag, cssClass, originalValue }
 
@@ -691,21 +919,21 @@
         while ((match = regex.exec(text)) !== null) {
           let value = match[0];
 
-          // Si la règle a un extracteur personnalisé, on l'utilise
+          // If the rule has a custom extractor, use it
           if (rule.extractMatch) {
             const groups = match.slice(1);
             value = rule.extractMatch(match[0], groups);
           }
 
-          // Validation optionnelle (filtre les faux positifs)
+          // Optional validation (filters false positives)
           if (rule.validator && !rule.validator(value, text)) {
             continue;
           }
 
-          // Trouver la position exacte de la valeur dans le match
+          // Find the exact position of the value within the match
           let start, end;
           if (rule.extractMatch) {
-            // La valeur extraite est un sous-groupe, on cherche sa position
+            // The extracted value is a sub-group; find its position
             const valIdx = match[0].indexOf(value);
             start = match.index + (valIdx >= 0 ? valIdx : 0);
             end = start + value.length;
@@ -724,12 +952,12 @@
       });
 
       // -------------------------------------------------------
-      // PASSE 2 : Application des remplacements
-      // On trie par position décroissante pour remplacer de la
-      // fin vers le début (évite le décalage des indices).
+      // PASS 2: Apply replacements
+      // Sort by descending position to replace from end to start
+      // (avoids index shifting).
       // -------------------------------------------------------
 
-      // Déduplique les chevauchements : on garde le match le plus long
+      // Deduplicate overlaps: keep the longest match
       allReplacements.sort((a, b) => a.start - b.start || b.end - a.end);
       const finalReplacements = [];
       let lastEnd = -1;
@@ -740,26 +968,26 @@
         }
       }
 
-      // Construit le texte sanitizé et la version HTML avec highlights
+      // Build the sanitized text and the highlighted HTML version
       let sanitized = '';
       let highlighted = '';
       let cursor = 0;
 
       for (const rep of finalReplacements) {
-        // Texte avant le remplacement
+        // Text before the replacement
         const before = text.substring(cursor, rep.start);
         sanitized += before + rep.tag;
         highlighted += escapeHtml(before) +
           `<span class="${rep.cssClass}">${escapeHtml(rep.tag)}</span>`;
         cursor = rep.end;
 
-        // Mise à jour des stats
+        // Update stats
         const cat = rep.cssClass.replace('san-', '');
         if (!this.stats[cat]) this.stats[cat] = 0;
         this.stats[cat]++;
       }
 
-      // Ajoute le reste du texte
+      // Append the remaining text
       sanitized += text.substring(cursor);
       highlighted += escapeHtml(text.substring(cursor));
 
@@ -769,14 +997,14 @@
     }
 
     /**
-     * Retourne les statistiques de détection.
+     * Returns detection statistics.
      */
     getStats() {
       return this.stats;
     }
 
     /**
-     * Retourne la table de mapping complète.
+     * Returns the full mapping table.
      */
     getMappingTable() {
       const table = [];
@@ -795,10 +1023,10 @@
 
 
   // =============================================================
-  // 3. UTILITAIRES
+  // 3. UTILITIES
   // =============================================================
 
-  /** Échappe le HTML pour l'affichage sûr dans les panneaux de code */
+  /** Escapes HTML for safe display in code panels */
   function escapeHtml(str) {
     return str
       .replace(/&/g, '&amp;')
@@ -807,7 +1035,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  /** Formate un texte avec numéros de lignes */
+  /** Formats text with line numbers */
   function formatWithLineNumbers(html) {
     const lines = html.split('\n');
     return lines.map((line, i) =>
@@ -817,7 +1045,7 @@
 
 
   // =============================================================
-  // 4. CONTRÔLEUR D'INTERFACE
+  // 4. UI CONTROLLER
   // =============================================================
 
   const engine = new SanitizationEngine();
@@ -825,19 +1053,20 @@
   let currentSanitizedText = '';
   let currentFileName = 'sanitized-log.txt';
 
-  // Catégories avec labels et couleurs pour les toggles
+  // Category labels and colors for toggles
   const CATEGORIES = {
-    ip:       { label: 'IPs / MAC', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-    email:    { label: 'Emails', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-    path:     { label: 'Chemins', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-    key:      { label: 'Clés / Tokens', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-    user:     { label: 'Utilisateurs', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+    ip:       { label: 'IPs / MAC',    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    email:    { label: 'Emails',       color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    path:     { label: 'Paths',        color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    key:      { label: 'Keys / Tokens', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+    user:     { label: 'Users',        color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
     hostname: { label: 'Hosts / URLs', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+    cred:     { label: 'Credentials',  color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   };
 
   const disabledCategories = new Set();
 
-  // --- Initialisation des toggles de catégories ---
+  // --- Category toggles initialization ---
   function initCategoryToggles() {
     const container = document.getElementById('categoryToggles');
     container.innerHTML = '';
@@ -862,20 +1091,80 @@
       disabledCategories.add(catId);
       el.classList.remove('active');
     }
-    // Re-sanitize si un fichier est chargé
+    // Re-sanitize if a file is loaded
     if (currentOriginalText) {
       processSanitization(currentOriginalText);
     }
   }
 
-  // --- Gestion du profil ---
+  // =============================================================
+  // PROFILE PERSISTENCE — localStorage helpers
+  // =============================================================
+
+  // =============================================================
+  // RULES PERSISTENCE — localStorage helpers
+  // =============================================================
+
+  function loadCustomRules() {
+    try { return JSON.parse(localStorage.getItem('logsanitizer_rules') || '[]'); }
+    catch { return []; }
+  }
+
+  function saveCustomRules(rules) {
+    localStorage.setItem('logsanitizer_rules', JSON.stringify(rules));
+  }
+
+  // Returns built-in rules merged with user-created ones.
+  // Custom rules are stored as plain JSON; regex objects are reconstructed here.
+  function getAllRules() {
+    const custom = loadCustomRules().map(r => ({
+      ...r,
+      cssClass: `san-${r.category}`,
+      regex: new RegExp(r.regexPattern, r.regexFlags || 'g'),
+      extractMatch: r.extractGroup ? (fm, groups) => groups[0] || fm : undefined,
+    }));
+    return [...RULES_DICTIONARY, ...custom];
+  }
+
+  function loadCustomProfiles() {
+    try { return JSON.parse(localStorage.getItem('logsanitizer_profiles') || '[]'); }
+    catch { return []; }
+  }
+
+  function saveCustomProfiles(profiles) {
+    localStorage.setItem('logsanitizer_profiles', JSON.stringify(profiles));
+  }
+
+  // Returns built-in profiles merged with user-created ones
+  function getAllProfiles() {
+    return [...PROFILES_REGISTRY, ...loadCustomProfiles()];
+  }
+
+  // --- Profile select initialization ---
+  function initProfileSelect() {
+    const currentVal = document.getElementById('profileSelect').value;
+    const sel = document.getElementById('profileSelect');
+    sel.innerHTML = '';
+    getAllProfiles().forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.icon} ${p.name} — ${p.description}`;
+      sel.appendChild(opt);
+    });
+    // Restore previously selected profile if it still exists
+    if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
+      sel.value = currentVal;
+    }
+  }
+
+  // --- Profile change handler ---
   document.getElementById('profileSelect').addEventListener('change', () => {
     if (currentOriginalText) {
       processSanitization(currentOriginalText);
     }
   });
 
-  // --- Drag & Drop ---
+  // --- Drag & Drop handling ---
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
 
@@ -908,7 +1197,7 @@
       const text = e.target.result;
       currentOriginalText = text;
       document.getElementById('fileInfo').textContent =
-        `${file.name} — ${(file.size / 1024).toFixed(1)} Ko — ${text.split('\n').length} lignes`;
+        `${file.name} — ${(file.size / 1024).toFixed(1)} KB — ${text.split('\n').length} lines`;
       processSanitization(text);
     };
     reader.readAsText(file);
@@ -928,22 +1217,22 @@
     currentOriginalText = text;
     currentFileName = 'sanitized-paste.txt';
     document.getElementById('fileInfo').textContent =
-      `Texte collé — ${text.length} car. — ${text.split('\n').length} lignes`;
+      `Pasted text — ${text.length} chars — ${text.split('\n').length} lines`;
     closePasteModal();
     processSanitization(text);
   }
 
-  // --- Moteur principal ---
+  // --- Main processing ---
   function processSanitization(text) {
     const profile = document.getElementById('profileSelect').value;
 
-    // Affiche la barre de progression
+    // Show the progress bar
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
     const progressPercent = document.getElementById('progressPercent');
     progressBar.classList.remove('hidden');
 
-    // Lance le traitement (asynchrone pour ne pas bloquer l'UI)
+    // Run processing asynchronously to avoid blocking the UI
     requestAnimationFrame(() => {
       const { sanitized, highlighted } = engine.sanitize(
         text, profile, disabledCategories,
@@ -955,7 +1244,7 @@
 
       currentSanitizedText = sanitized;
 
-      // Met à jour les panneaux
+      // Update panels
       const originalHtml = formatWithLineNumbers(escapeHtml(text));
       const sanitizedHtml = formatWithLineNumbers(highlighted);
 
@@ -963,28 +1252,25 @@
       document.getElementById('panelSanitized').innerHTML = sanitizedHtml;
       document.getElementById('panelSanitizedFull').innerHTML = sanitizedHtml;
 
-      // Synchronise le scroll entre les deux panneaux
-      syncScroll();
-
-      // Met à jour les stats
+      // Update stats
       updateStats(engine.getStats());
       updateMappingTable(engine.getMappingTable());
 
-      // Affiche les sections
+      // Show sections
       document.getElementById('splitView').classList.remove('hidden');
       document.getElementById('statsPanel').classList.remove('hidden');
 
-      // Active les boutons d'export
+      // Enable export buttons
       document.getElementById('btnExport').disabled = false;
       document.getElementById('btnExportMapping').disabled = false;
 
-      // Cache la progression après un court délai
+      // Hide progress after a short delay
       setTimeout(() => { progressBar.classList.add('hidden'); }, 800);
     });
   }
 
-  // --- Scroll synchronisé ---
-  function syncScroll() {
+  // --- Synchronized scroll (initialized once) ---
+  function initSyncScroll() {
     const original = document.getElementById('panelOriginal');
     const sanitized = document.getElementById('panelSanitized');
     let syncing = false;
@@ -1006,14 +1292,15 @@
     });
   }
 
-  // --- Stats ---
+  // --- Stats panel ---
   const STAT_META = {
-    ip:       { icon: '🌐', label: 'IPs / MAC', gradClass: 'from-blue-500/20 to-blue-500/5 border-blue-500/20' },
-    email:    { icon: '📧', label: 'Emails', gradClass: 'from-purple-500/20 to-purple-500/5 border-purple-500/20' },
-    path:     { icon: '📁', label: 'Chemins', gradClass: 'from-orange-500/20 to-orange-500/5 border-orange-500/20' },
-    key:      { icon: '🔑', label: 'Clés / Tokens', gradClass: 'from-red-500/20 to-red-500/5 border-red-500/20' },
-    user:     { icon: '👤', label: 'Utilisateurs', gradClass: 'from-yellow-500/20 to-yellow-500/5 border-yellow-500/20' },
-    hostname: { icon: '🖥️', label: 'Hosts / URLs', gradClass: 'from-green-500/20 to-green-500/5 border-green-500/20' },
+    ip:       { icon: '🌐', label: 'IPs / MAC',    gradClass: 'from-blue-500/20 to-blue-500/5 border-blue-500/20' },
+    email:    { icon: '📧', label: 'Emails',        gradClass: 'from-purple-500/20 to-purple-500/5 border-purple-500/20' },
+    path:     { icon: '📁', label: 'Paths',         gradClass: 'from-orange-500/20 to-orange-500/5 border-orange-500/20' },
+    key:      { icon: '🔑', label: 'Keys / Tokens', gradClass: 'from-red-500/20 to-red-500/5 border-red-500/20' },
+    user:     { icon: '👤', label: 'Users',         gradClass: 'from-yellow-500/20 to-yellow-500/5 border-yellow-500/20' },
+    hostname: { icon: '🖥️', label: 'Hosts / URLs',  gradClass: 'from-green-500/20 to-green-500/5 border-green-500/20' },
+    cred:     { icon: '🔐', label: 'Credentials',   gradClass: 'from-cyan-500/20 to-cyan-500/5 border-cyan-500/20' },
   };
 
   function updateStats(stats) {
@@ -1032,12 +1319,12 @@
     });
   }
 
-  // --- Table de mapping ---
+  // --- Mapping table ---
   function updateMappingTable(table) {
     const tbody = document.getElementById('mappingTableBody');
     tbody.innerHTML = '';
     if (table.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-surface-500">Aucun mapping généré</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-surface-500">No mappings generated</td></tr>';
       return;
     }
     table.forEach(entry => {
@@ -1053,7 +1340,7 @@
     });
   }
 
-  // --- Onglets ---
+  // --- Tabs ---
   function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(el => {
@@ -1063,7 +1350,7 @@
     document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.remove('hidden');
   }
 
-  // --- Export fichier sanitizé ---
+  // --- Export sanitized file ---
   function exportSanitized() {
     if (!currentSanitizedText) return;
     const blob = new Blob([currentSanitizedText], { type: 'text/plain;charset=utf-8' });
@@ -1075,7 +1362,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // --- Export mapping JSON ---
+  // --- Export mapping as JSON ---
   function exportMapping() {
     const table = engine.getMappingTable();
     if (table.length === 0) return;
@@ -1099,7 +1386,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // --- Reset complet ---
+  // --- Full reset ---
   function resetAll() {
     engine.reset();
     currentOriginalText = '';
@@ -1116,13 +1403,547 @@
     document.getElementById('panelSanitizedFull').innerHTML = '';
     document.getElementById('pasteArea').value = '';
     fileInput.value = '';
-    // Réactive toutes les catégories
+    // Re-enable all categories
     disabledCategories.clear();
     initCategoryToggles();
   }
 
-  // --- Init ---
+  // =============================================================
+  // RULES MANAGER
+  // =============================================================
+
+  let _editingRuleId = null; // null = creating a new rule
+
+  function openRulesManager() {
+    _editingRuleId = null;
+    initRulesManagerFilters();
+    renderRulesList();
+    document.getElementById('rulesEditorPanel').innerHTML =
+      '<p class="text-surface-500 text-sm text-center mt-12">Select a rule to inspect,<br>or create a new one.</p>';
+    document.getElementById('rulesManagerModal').classList.remove('hidden');
+  }
+
+  function closeRulesManager() {
+    document.getElementById('rulesManagerModal').classList.add('hidden');
+  }
+
+  function initRulesManagerFilters() {
+    const sel = document.getElementById('rulesCategoryFilter');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>';
+    Object.entries(CATEGORIES).forEach(([id, cat]) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = cat.label;
+      if (id === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderRulesList() {
+    const list = document.getElementById('rulesManagerList');
+    const filterCat = document.getElementById('rulesCategoryFilter')?.value || '';
+    const allRules = getAllRules();
+    const filtered = filterCat ? allRules.filter(r => r.category === filterCat) : allRules;
+
+    // Group by category
+    const grouped = {};
+    filtered.forEach(r => {
+      (grouped[r.category] = grouped[r.category] || []).push(r);
+    });
+
+    let html = '';
+    Object.entries(grouped).forEach(([cat, rules]) => {
+      const catMeta = CATEGORIES[cat] || { label: cat };
+      html += `<div class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-surface-500 font-medium">${catMeta.label} <span class="normal-case">(${rules.length})</span></div>`;
+      rules.forEach(r => {
+        const isCustom = !!r.custom;
+        const active = _editingRuleId === r.id;
+        html += `<button onclick="selectRuleInManager('${r.id}')"
+          class="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
+          <span class="flex-1 truncate">${r.name}</span>
+          <span class="text-[10px] leading-none ${isCustom ? 'text-accent-cyan' : 'text-surface-500'}">${isCustom ? '✎' : '🔒'}</span>
+        </button>`;
+      });
+    });
+
+    if (!html) html = '<p class="px-3 py-4 text-xs text-surface-500 italic text-center">No rules in this category.</p>';
+    list.innerHTML = html;
+  }
+
+  function selectRuleInManager(id) {
+    _editingRuleId = id;
+    const rule = getAllRules().find(r => r.id === id);
+    if (!rule) return;
+    renderRulesList();
+    renderRuleEditor(rule, !rule.custom);
+  }
+
+  function renderRuleEditor(rule, readOnly) {
+    const panel = document.getElementById('rulesEditorPanel');
+    const pattern = rule.regex ? rule.regex.source : (rule.regexPattern || '');
+    const flags   = rule.regex ? rule.regex.flags   : (rule.regexFlags   || 'g');
+    const hasExtract = !!(rule.extractMatch || rule.extractGroup);
+    const dis    = readOnly ? 'disabled' : '';
+    const dimmed = readOnly ? 'opacity-50' : '';
+
+    const catOptions = Object.entries(CATEGORIES).map(([id, cat]) =>
+      `<option value="${id}" ${rule.category === id ? 'selected' : ''}>${cat.label}</option>`
+    ).join('');
+
+    panel.innerHTML = `
+      <div class="p-6 space-y-4">
+        ${readOnly ? `<div class="flex items-center gap-2 text-xs text-surface-500 bg-surface-300/40 rounded-lg px-3 py-2">
+          <span>🔒</span><span>Built-in rule — read-only. Click <strong class="text-white">Duplicate & edit</strong> to create a custom variant.</span>
+        </div>` : ''}
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2">
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Name</label>
+            <input id="rule_name" type="text" value="${escapeHtml(rule.name)}" ${dis}
+              placeholder="e.g. Tenable Plugin ID"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+          <div>
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Category</label>
+            <select id="rule_category" ${dis}
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-cyan ${dimmed}">
+              ${catOptions}
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Prefix <span class="normal-case text-surface-500">(replacement tag)</span></label>
+            <input id="rule_prefix" type="text" value="${escapeHtml(rule.prefix || '')}" ${dis}
+              placeholder="PLUGIN"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+          <div>
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Priority <span class="normal-case text-surface-500">(lower = first)</span></label>
+            <input id="rule_priority" type="number" value="${rule.priority || 100}" ${dis} min="1" max="999"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+          <div>
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Flags</label>
+            <input id="rule_flags" type="text" value="${flags}" ${dis}
+              placeholder="gi"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Regex pattern</label>
+          <input id="rule_pattern" type="text" value="${escapeHtml(pattern)}" ${dis}
+            placeholder="e.g. (?:pluginID)\\s*=\\s*(\\d+)"
+            class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+          <p id="rule_pattern_error" class="text-xs text-accent-red mt-1 hidden"></p>
+        </div>
+
+        <label class="flex items-center gap-2.5 ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}">
+          <input type="checkbox" id="rule_extract" ${hasExtract ? 'checked' : ''} ${dis} class="w-3.5 h-3.5 rounded">
+          <span class="text-sm text-surface-600">Extract capture group 1
+            <span class="text-xs text-surface-500"> — use when the pattern wraps the sensitive value in <code class="text-accent-cyan">(...)</code></span>
+          </span>
+        </label>
+
+        <div class="flex items-center justify-between pt-3 border-t border-surface-300">
+          ${readOnly
+            ? `<span></span>
+               <button onclick="duplicateRule('${rule.id}')"
+                 class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/40 text-accent-cyan hover:bg-accent-cyan/10 transition-all">
+                 Duplicate &amp; edit
+               </button>`
+            : `<button onclick="deleteCustomRule('${rule.id}')"
+                 class="px-4 py-2 text-sm rounded-lg border border-accent-red/40 text-accent-red hover:bg-accent-red/10 transition-all ${!rule.id ? 'invisible' : ''}">
+                 Delete
+               </button>
+               <button id="btnSaveRule" onclick="saveCustomRule()"
+                 class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/40 text-accent-green hover:bg-accent-green/30 transition-all font-medium">
+                 Save rule
+               </button>`
+          }
+        </div>
+
+        <!-- ── Live tester ── -->
+        <div class="border-t border-surface-300 pt-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-surface-500 uppercase tracking-wider font-medium">Live test</span>
+            <button onclick="runRuleTest()"
+              class="px-3 py-1.5 text-xs rounded-lg bg-surface-300 border border-surface-400 text-white hover:border-accent-cyan transition-all font-medium">
+              ▶ Run test
+            </button>
+          </div>
+          <textarea id="ruleTestInput" rows="3"
+            class="w-full bg-surface-300 border border-surface-400 rounded-lg p-3 font-mono text-xs text-white focus:outline-none focus:border-accent-cyan resize-y"
+            placeholder="Paste a sample log line here to test the rule…"></textarea>
+          <div id="ruleTestOutput" class="hidden space-y-2">
+            <p id="ruleTestSummary" class="text-xs text-surface-500"></p>
+            <div id="ruleTestMatches" class="space-y-1.5 max-h-40 overflow-auto"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function runRuleTest() {
+    const sample  = document.getElementById('ruleTestInput').value;
+    const pattern = document.getElementById('rule_pattern').value.trim();
+    const flags   = document.getElementById('rule_flags').value.trim() || 'g';
+    const extract = document.getElementById('rule_extract').checked;
+    const errEl   = document.getElementById('rule_pattern_error');
+    const output  = document.getElementById('ruleTestOutput');
+    const summary = document.getElementById('ruleTestSummary');
+    const matchesEl = document.getElementById('ruleTestMatches');
+
+    if (!pattern) return;
+    if (!sample.trim()) { summary.textContent = 'Enter a sample text above.'; output.classList.remove('hidden'); matchesEl.innerHTML = ''; return; }
+
+    let regex;
+    try {
+      const f = flags.includes('g') ? flags : flags + 'g';
+      regex = new RegExp(pattern, f);
+      errEl.classList.add('hidden');
+    } catch (e) {
+      errEl.textContent = 'Invalid regex: ' + e.message;
+      errEl.classList.remove('hidden');
+      output.classList.add('hidden');
+      return;
+    }
+
+    const matches = [];
+    let m, safety = 0;
+    regex.lastIndex = 0;
+    while ((m = regex.exec(sample)) !== null && safety++ < 200) {
+      matches.push({ full: m[0], extracted: (extract && m[1] != null) ? m[1] : m[0], index: m.index });
+      if (!flags.includes('g')) break;
+    }
+
+    output.classList.remove('hidden');
+    if (matches.length === 0) {
+      summary.textContent = 'No matches found.';
+      matchesEl.innerHTML = '';
+    } else {
+      summary.textContent = `${matches.length} match${matches.length !== 1 ? 'es' : ''} found:`;
+      matchesEl.innerHTML = matches.map(match =>
+        `<div class="bg-surface-300 rounded px-3 py-2 font-mono text-xs space-y-1">
+          <div><span class="text-surface-500">full match: </span><span class="san-key">${escapeHtml(match.full)}</span></div>
+          ${match.full !== match.extracted
+            ? `<div><span class="text-surface-500">extracted:  </span><span class="san-user">${escapeHtml(match.extracted)}</span></div>`
+            : ''}
+          <div class="text-surface-500">position: ${match.index}</div>
+        </div>`
+      ).join('');
+    }
+  }
+
+  function newRule() {
+    _editingRuleId = null;
+    renderRulesList();
+    renderRuleEditor({ id: '', name: '', category: 'key', prefix: '', priority: 100, regexPattern: '', regexFlags: 'g', extractGroup: false }, false);
+  }
+
+  function duplicateRule(sourceId) {
+    const src = getAllRules().find(r => r.id === sourceId);
+    if (!src) return;
+    _editingRuleId = null;
+    renderRulesList();
+    renderRuleEditor({
+      id: '',
+      name: src.name + ' (copy)',
+      category: src.category,
+      prefix: src.prefix,
+      priority: src.priority,
+      regexPattern: src.regex ? src.regex.source : src.regexPattern,
+      regexFlags:   src.regex ? src.regex.flags   : src.regexFlags,
+      extractGroup: !!(src.extractMatch || src.extractGroup),
+    }, false);
+  }
+
+  function saveCustomRule() {
+    const name     = document.getElementById('rule_name').value.trim();
+    const category = document.getElementById('rule_category').value;
+    const prefix   = document.getElementById('rule_prefix').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') || 'CUSTOM';
+    const priority = parseInt(document.getElementById('rule_priority').value) || 100;
+    const pattern  = document.getElementById('rule_pattern').value.trim();
+    const flags    = document.getElementById('rule_flags').value.trim() || 'g';
+    const extract  = document.getElementById('rule_extract').checked;
+    const errEl    = document.getElementById('rule_pattern_error');
+
+    if (!name)    { document.getElementById('rule_name').focus(); return; }
+    if (!pattern) { document.getElementById('rule_pattern').focus(); return; }
+
+    try {
+      new RegExp(pattern, flags);
+      errEl.classList.add('hidden');
+    } catch (e) {
+      errEl.textContent = 'Invalid regex: ' + e.message;
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const custom = loadCustomRules();
+    if (_editingRuleId) {
+      const idx = custom.findIndex(r => r.id === _editingRuleId);
+      if (idx >= 0) custom[idx] = { ...custom[idx], name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract };
+    } else {
+      const newId = 'custom_rule_' + Date.now();
+      custom.push({ id: newId, name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract, custom: true });
+      _editingRuleId = newId;
+    }
+
+    saveCustomRules(custom);
+    renderRulesList();
+    updateRulesCountBadge();
+
+    const btn = document.getElementById('btnSaveRule');
+    if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = 'Save rule'; }, 1500); }
+
+    if (currentOriginalText) processSanitization(currentOriginalText);
+  }
+
+  function deleteCustomRule(id) {
+    if (!id || !confirm('Delete this rule?')) return;
+    saveCustomRules(loadCustomRules().filter(r => r.id !== id));
+    _editingRuleId = null;
+    renderRulesList();
+    updateRulesCountBadge();
+    document.getElementById('rulesEditorPanel').innerHTML =
+      '<p class="text-surface-500 text-sm text-center mt-12">Rule deleted.</p>';
+    if (currentOriginalText) processSanitization(currentOriginalText);
+  }
+
+  function updateRulesCountBadge() {
+    const total = getAllRules().length;
+    const custom = loadCustomRules().length;
+    const badge = document.getElementById('rulesCountBadge');
+    if (badge) badge.textContent = custom > 0 ? `${total} (+${custom})` : `${total}`;
+  }
+
+  // =============================================================
+  // PROFILE MANAGER
+  // =============================================================
+
+  let _editingProfileId = null; // null = creating a new profile
+
+  function openProfileManager() {
+    _editingProfileId = null;
+    renderProfileManagerList();
+    document.getElementById('profileEditorPanel').innerHTML =
+      '<p class="text-surface-500 text-sm text-center mt-12">Select a profile to view or edit,<br>or create a new one.</p>';
+    document.getElementById('profileManagerModal').classList.remove('hidden');
+  }
+
+  function closeProfileManager() {
+    document.getElementById('profileManagerModal').classList.add('hidden');
+  }
+
+  function renderProfileManagerList() {
+    const list = document.getElementById('profileManagerList');
+    const custom = loadCustomProfiles();
+    let html = '';
+
+    // Built-in profiles (read-only)
+    html += `<div class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-surface-500 font-medium">Built-in</div>`;
+    PROFILES_REGISTRY.forEach(p => {
+      const active = _editingProfileId === p.id;
+      html += `<button onclick="selectProfileInManager('${p.id}', true)"
+        class="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
+        <span class="text-base leading-none">${p.icon}</span>
+        <span class="flex-1 truncate">${p.name}</span>
+        <span class="text-[10px] text-surface-500 leading-none">🔒</span>
+      </button>`;
+    });
+
+    // Custom profiles
+    html += `<div class="px-3 pt-4 pb-1 text-[10px] uppercase tracking-widest text-surface-500 font-medium">My profiles</div>`;
+    if (custom.length === 0) {
+      html += `<p class="px-3 py-2 text-xs text-surface-500 italic">No custom profiles yet</p>`;
+    } else {
+      custom.forEach(p => {
+        const active = _editingProfileId === p.id;
+        html += `<button onclick="selectProfileInManager('${p.id}', false)"
+          class="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
+          <span class="text-base leading-none">${p.icon}</span>
+          <span class="flex-1 truncate">${p.name}</span>
+        </button>`;
+      });
+    }
+
+    list.innerHTML = html;
+  }
+
+  function selectProfileInManager(id, isBuiltIn) {
+    _editingProfileId = id;
+    const profile = getAllProfiles().find(p => p.id === id);
+    if (!profile) return;
+    renderProfileManagerList();
+    renderProfileEditor(profile, isBuiltIn);
+  }
+
+  function renderProfileEditor(profile, readOnly) {
+    const panel = document.getElementById('profileEditorPanel');
+    const isAll = profile.categories === 'all';
+    const dis = readOnly ? 'disabled' : '';
+    const dimmed = readOnly ? 'opacity-50' : '';
+
+    const catRows = Object.entries(CATEGORIES).map(([id, cat]) => {
+      const checked = isAll || (Array.isArray(profile.categories) && profile.categories.includes(id));
+      return `<label class="flex items-center gap-2.5 ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-white'} transition-colors">
+        <input type="checkbox" id="cat_${id}" value="${id}" ${checked ? 'checked' : ''} ${dis}
+          class="w-3.5 h-3.5 rounded accent-green-500">
+        <span class="text-sm">${cat.label}</span>
+      </label>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="p-6 space-y-5">
+        ${readOnly ? `<div class="flex items-center gap-2 text-xs text-surface-500 bg-surface-300/40 rounded-lg px-3 py-2">
+          <span>🔒</span><span>Built-in profile — read-only. Use <strong class="text-white">Duplicate</strong> to create an editable copy.</span>
+        </div>` : ''}
+
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Icon</label>
+            <input id="edit_icon" type="text" value="${profile.icon}" ${dis} maxlength="4"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-center text-lg focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+          <div class="col-span-3">
+            <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Name</label>
+            <input id="edit_name" type="text" value="${escapeHtml(profile.name)}" ${dis}
+              placeholder="e.g. Splunk, Trellix…"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Description</label>
+          <input id="edit_description" type="text" value="${escapeHtml(profile.description)}" ${dis}
+            placeholder="Short description displayed in the selector…"
+            class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-sm text-white placeholder-surface-500 focus:outline-none focus:border-accent-cyan ${dimmed}">
+        </div>
+
+        <div>
+          <label class="block text-xs text-surface-500 uppercase tracking-wider mb-3">Active categories</label>
+          <label class="flex items-center gap-2.5 mb-3 ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}">
+            <input type="checkbox" id="cat_all" ${isAll ? 'checked' : ''} ${dis}
+              onchange="toggleAllCategoriesUI(this.checked)"
+              class="w-3.5 h-3.5 rounded accent-green-500">
+            <span class="text-sm font-medium text-white">All categories</span>
+          </label>
+          <div id="catGroup" class="grid grid-cols-2 gap-2 pl-1 border-l-2 border-surface-400 ml-1.5 ${isAll ? 'opacity-30 pointer-events-none' : ''}">
+            ${catRows}
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-surface-300">
+          ${readOnly
+            ? `<span></span>
+               <button onclick="duplicateProfile('${profile.id}')"
+                 class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/40 text-accent-cyan hover:bg-accent-cyan/10 transition-all">
+                 Duplicate & edit
+               </button>`
+            : `<button onclick="deleteCustomProfile('${profile.id}')"
+                 class="px-4 py-2 text-sm rounded-lg border border-accent-red/40 text-accent-red hover:bg-accent-red/10 transition-all">
+                 Delete
+               </button>
+               <button id="btnSaveProfile" onclick="saveCustomProfile()"
+                 class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/40 text-accent-green hover:bg-accent-green/30 transition-all font-medium">
+                 Save profile
+               </button>`
+          }
+        </div>
+      </div>`;
+  }
+
+  function toggleAllCategoriesUI(checked) {
+    const group = document.getElementById('catGroup');
+    group.classList.toggle('opacity-30', checked);
+    group.classList.toggle('pointer-events-none', checked);
+  }
+
+  function newProfile() {
+    _editingProfileId = null;
+    renderProfileManagerList();
+    renderProfileEditor({ id: '', name: '', icon: '📋', description: '', categories: [] }, false);
+  }
+
+  function duplicateProfile(sourceId) {
+    const src = getAllProfiles().find(p => p.id === sourceId);
+    if (!src) return;
+    _editingProfileId = null;
+    renderProfileManagerList();
+    renderProfileEditor({
+      id: '',
+      name: src.name + ' (copy)',
+      icon: src.icon,
+      description: src.description,
+      categories: src.categories === 'all' ? 'all' : [...src.categories],
+    }, false);
+  }
+
+  function saveCustomProfile() {
+    const name = document.getElementById('edit_name').value.trim();
+    const icon = (document.getElementById('edit_icon').value.trim() || '📋').slice(0, 4);
+    const description = document.getElementById('edit_description').value.trim();
+    const allChecked = document.getElementById('cat_all').checked;
+
+    if (!name) {
+      document.getElementById('edit_name').focus();
+      document.getElementById('edit_name').classList.add('border-accent-red');
+      return;
+    }
+    document.getElementById('edit_name').classList.remove('border-accent-red');
+
+    let categories;
+    if (allChecked) {
+      categories = 'all';
+    } else {
+      categories = Object.keys(CATEGORIES).filter(id => {
+        const cb = document.getElementById('cat_' + id);
+        return cb && cb.checked;
+      });
+      if (categories.length === 0) {
+        document.getElementById('catGroup').classList.add('ring-1', 'ring-accent-red/50');
+        return;
+      }
+      document.getElementById('catGroup').classList.remove('ring-1', 'ring-accent-red/50');
+    }
+
+    const custom = loadCustomProfiles();
+
+    if (_editingProfileId) {
+      const idx = custom.findIndex(p => p.id === _editingProfileId);
+      if (idx >= 0) custom[idx] = { ...custom[idx], name, icon, description, categories };
+    } else {
+      const newId = 'custom_' + Date.now();
+      custom.push({ id: newId, name, icon, description, categories });
+      _editingProfileId = newId;
+    }
+
+    saveCustomProfiles(custom);
+    initProfileSelect();
+    renderProfileManagerList();
+
+    const btn = document.getElementById('btnSaveProfile');
+    if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = 'Save profile'; }, 1500); }
+  }
+
+  function deleteCustomProfile(id) {
+    if (!confirm(`Delete this profile?`)) return;
+    saveCustomProfiles(loadCustomProfiles().filter(p => p.id !== id));
+    _editingProfileId = null;
+    initProfileSelect();
+    renderProfileManagerList();
+    document.getElementById('profileEditorPanel').innerHTML =
+      '<p class="text-surface-500 text-sm text-center mt-12">Profile deleted.</p>';
+  }
+
+  // --- Initialization ---
+  initProfileSelect();
   initCategoryToggles();
+  updateRulesCountBadge();
+  initSyncScroll();
 
   </script>
 </body>

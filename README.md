@@ -1,4 +1,4 @@
-# LogShield — Zero-Server Log Sanitizer
+# LogSanitizer — Zero-Server Log Sanitizer
 
 Application web de sanitization de logs **100% locale** (zéro backend, zéro connexion réseau).
 Conçue pour les environnements airgapped et le traitement de logs confidentiels.
