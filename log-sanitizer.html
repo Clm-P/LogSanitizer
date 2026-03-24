@@ -897,6 +897,11 @@
       const activeRules = getAllRules()
         .filter(r => {
           if (disabledCategories.has(r.category)) return false;
+          // Custom rules with explicit profile assignments: only active in those profiles
+          if (r.profileIds && r.profileIds.length > 0) {
+            return r.profileIds.includes(profile);
+          }
+          // Otherwise filter by the profile's category list
           if (profileDef.categories === 'all') return true;
           return profileDef.categories.includes(r.category);
         })
@@ -1548,6 +1553,22 @@
           </span>
         </label>
 
+        <div>
+          <label class="block text-xs text-surface-500 uppercase tracking-wider mb-2">
+            Active in profiles
+            <span class="normal-case text-surface-500 ml-1">— leave all unchecked to activate in any profile matching the category</span>
+          </label>
+          <div class="grid grid-cols-2 gap-1.5">
+            ${getAllProfiles().map(p => {
+              const checked = rule.profileIds && rule.profileIds.includes(p.id);
+              return `<label class="flex items-center gap-2 ${readOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-white'} transition-colors">
+                <input type="checkbox" name="rule_profileIds" value="${p.id}" ${checked ? 'checked' : ''} ${dis} class="w-3.5 h-3.5 rounded">
+                <span class="text-xs text-surface-600">${p.icon} ${p.name}</span>
+              </label>`;
+            }).join('')}
+          </div>
+        </div>
+
         <div class="flex items-center justify-between pt-3 border-t border-surface-300">
           ${readOnly
             ? `<span></span>
@@ -1657,6 +1678,7 @@
       regexPattern: src.regex ? src.regex.source : src.regexPattern,
       regexFlags:   src.regex ? src.regex.flags   : src.regexFlags,
       extractGroup: !!(src.extractMatch || src.extractGroup),
+      profileIds:   src.profileIds ? [...src.profileIds] : [],
     }, false);
   }
 
@@ -1667,8 +1689,9 @@
     const priority = parseInt(document.getElementById('rule_priority').value) || 100;
     const pattern  = document.getElementById('rule_pattern').value.trim();
     const flags    = document.getElementById('rule_flags').value.trim() || 'g';
-    const extract  = document.getElementById('rule_extract').checked;
-    const errEl    = document.getElementById('rule_pattern_error');
+    const extract    = document.getElementById('rule_extract').checked;
+    const profileIds = [...document.querySelectorAll('input[name="rule_profileIds"]:checked')].map(cb => cb.value);
+    const errEl      = document.getElementById('rule_pattern_error');
 
     if (!name)    { document.getElementById('rule_name').focus(); return; }
     if (!pattern) { document.getElementById('rule_pattern').focus(); return; }
@@ -1685,10 +1708,10 @@
     const custom = loadCustomRules();
     if (_editingRuleId) {
       const idx = custom.findIndex(r => r.id === _editingRuleId);
-      if (idx >= 0) custom[idx] = { ...custom[idx], name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract };
+      if (idx >= 0) custom[idx] = { ...custom[idx], name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract, profileIds };
     } else {
       const newId = 'custom_rule_' + Date.now();
-      custom.push({ id: newId, name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract, custom: true });
+      custom.push({ id: newId, name, category, prefix, priority, regexPattern: pattern, regexFlags: flags, extractGroup: extract, profileIds, custom: true });
       _editingRuleId = newId;
     }
 
