@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogShield — Zero-Server Log Sanitizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            // Palette "Terminal Noir" — esthétique cybersec/ops
+            surface: { 50: '#f0fdf4', 100: '#0d1117', 200: '#161b22', 300: '#21262d', 400: '#30363d', 500: '#484f58', 600: '#8b949e' },
+            accent: { green: '#39d353', cyan: '#58a6ff', orange: '#f0883e', red: '#f85149', purple: '#bc8cff', yellow: '#e3b341' },
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
+            display: ['"Space Grotesk"', '"DM Sans"', 'system-ui', 'sans-serif'],
+            body: ['"IBM Plex Sans"', '"DM Sans"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================================
+       STYLES GLOBAUX & ANIMATIONS
+       ======================================================== */
+    * { box-sizing: border-box; }
+    body { background: #0d1117; color: #c9d1d9; }
+
+    /* Scrollbar personnalisée */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #161b22; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+    /* Zone de drop */
+    .drop-zone { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .drop-zone.drag-over {
+      border-color: #39d353 !important;
+      background: rgba(57, 211, 83, 0.06) !important;
+      box-shadow: 0 0 30px rgba(57, 211, 83, 0.1), inset 0 0 30px rgba(57, 211, 83, 0.03);
+    }
+
+    /* Highlight des éléments sanitizés */
+    .san-ip { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border-radius: 3px; padding: 0 3px; }
+    .san-email { background: rgba(188, 140, 255, 0.15); color: #bc8cff; border-radius: 3px; padding: 0 3px; }
+    .san-path { background: rgba(240, 136, 62, 0.15); color: #f0883e; border-radius: 3px; padding: 0 3px; }
+    .san-key { background: rgba(248, 81, 73, 0.15); color: #f85149; border-radius: 3px; padding: 0 3px; }
+    .san-user { background: rgba(227, 179, 65, 0.15); color: #e3b341; border-radius: 3px; padding: 0 3px; }
+    .san-hostname { background: rgba(57, 211, 83, 0.15); color: #39d353; border-radius: 3px; padding: 0 3px; }
+
+    /* Panneau de code */
+    .code-panel {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-all;
+      tab-size: 4;
+    }
+
+    /* Ligne numérotée */
+    .line-num {
+      display: inline-block;
+      width: 3.5em;
+      text-align: right;
+      padding-right: 1em;
+      color: #484f58;
+      user-select: none;
+      border-right: 1px solid #21262d;
+      margin-right: 1em;
+    }
+    .code-line { display: block; padding: 1px 0; }
+    .code-line:hover { background: rgba(88, 166, 255, 0.04); }
+
+    /* Toggle switch */
+    .toggle-track {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: #30363d; position: relative;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-track.active { background: #238636; }
+    .toggle-knob {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #c9d1d9; position: absolute;
+      top: 2px; left: 2px; transition: transform 0.2s;
+    }
+    .toggle-track.active .toggle-knob { transform: translateX(16px); }
+
+    /* Barre de progression */
+    .progress-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, #238636, #39d353);
+      transition: width 0.3s ease;
+    }
+
+    /* Animations d'entrée */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: fadeSlideUp 0.4s ease forwards; }
+
+    /* Pulse pour l'icône shield */
+    @keyframes shieldPulse {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(57, 211, 83, 0.3)); }
+      50% { filter: drop-shadow(0 0 12px rgba(57, 211, 83, 0.6)); }
+    }
+    .shield-pulse { animation: shieldPulse 3s ease-in-out infinite; }
+
+    /* Tooltip */
+    .tooltip { position: relative; }
+    .tooltip::after {
+      content: attr(data-tip);
+      position: absolute; bottom: 120%; left: 50%;
+      transform: translateX(-50%); padding: 4px 10px;
+      background: #30363d; color: #c9d1d9;
+      font-size: 11px; border-radius: 4px;
+      white-space: nowrap; opacity: 0;
+      pointer-events: none; transition: opacity 0.2s;
+    }
+    .tooltip:hover::after { opacity: 1; }
+
+    /* Badge stat animé */
+    .stat-badge {
+      transition: all 0.3s ease;
+    }
+    .stat-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Onglets */
+    .tab-btn { transition: all 0.2s; }
+    .tab-btn.active {
+      color: #39d353;
+      border-color: #39d353;
+    }
+  </style>
+</head>
+<body class="min-h-screen font-body antialiased">
+
+  <!-- ========================================================
+       HEADER
+       ======================================================== -->
+  <header class="border-b border-surface-300 bg-surface-200/80 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <!-- Logo Shield SVG -->
+        <svg class="w-8 h-8 shield-pulse" viewBox="0 0 32 32" fill="none">
+          <path d="M16 2L4 8v8c0 7.73 5.12 14.96 12 16 6.88-1.04 12-8.27 12-16V8L16 2z" fill="none" stroke="#39d353" stroke-width="2"/>
+          <path d="M12 16l3 3 5-6" stroke="#39d353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogShield</h1>
+          <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <!-- Indicateur offline -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-300/50 border border-surface-400">
+          <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
+          <span class="text-xs text-surface-600">100% Local</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       CONTENU PRINCIPAL
+       ======================================================== -->
+  <main class="max-w-[1600px] mx-auto px-6 py-6">
+
+    <!-- BARRE DE CONTRÔLES -->
+    <div class="flex flex-wrap items-center gap-4 mb-6 animate-in" style="animation-delay: 0.1s">
+
+      <!-- Profil de nettoyage -->
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-surface-600 uppercase tracking-wider font-medium">Profil</label>
+        <select id="profileSelect"
+          class="bg-surface-300 border border-surface-400 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-accent-cyan cursor-pointer">
+          <option value="standard">🛡️ Standard (toutes les règles)</option>
+          <option value="network">🌐 Réseau (IPs, hostnames, ports)</option>
+          <option value="applicatif">⚙️ Applicatif (users, sessions, paths)</option>
+          <option value="cloud">☁️ Cloud (clés API, ARN, endpoints)</option>
+        </select>
+      </div>
+
+      <!-- Séparateur -->
+      <div class="w-px h-8 bg-surface-400"></div>
+
+      <!-- Toggles catégories -->
+      <div id="categoryToggles" class="flex flex-wrap items-center gap-3">
+        <!-- Rempli dynamiquement par JS -->
+      </div>
+
+      <!-- Spacer -->
+      <div class="flex-1"></div>
+
+      <!-- Boutons d'action -->
+      <button id="btnReset" onclick="resetAll()"
+        class="px-4 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-surface-500 transition-all">
+        Réinitialiser
+      </button>
+      <button id="btnExportMapping" onclick="exportMapping()" disabled
+        class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+        📋 Export Mapping
+      </button>
+      <button id="btnExport" onclick="exportSanitized()" disabled
+        class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/30 text-accent-green hover:bg-accent-green/30 transition-all font-medium disabled:opacity-30 disabled:cursor-not-allowed">
+        ⬇ Télécharger le fichier nettoyé
+      </button>
+    </div>
+
+    <!-- ZONE DRAG & DROP / PASTE -->
+    <div id="dropZone" class="drop-zone border-2 border-dashed border-surface-400 rounded-xl p-8 mb-6 text-center cursor-pointer animate-in" style="animation-delay: 0.2s"
+      onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" class="hidden" accept=".txt,.log,.json,.csv,.xml,.yaml,.yml" multiple>
+      <div class="flex flex-col items-center gap-3">
+        <svg class="w-12 h-12 text-surface-500" fill="none" viewBox="0 0 48 48">
+          <rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+          <path d="M24 18v12M18 24h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="text-surface-600 text-sm">Glissez vos fichiers ici ou <span class="text-accent-cyan underline">parcourez</span></p>
+          <p class="text-surface-500 text-xs mt-1">.txt, .log, .json, .csv, .xml, .yaml — ou collez du texte avec le bouton ci-dessous</p>
+        </div>
+        <button onclick="event.stopPropagation(); openPasteModal()"
+          class="mt-2 px-4 py-2 text-xs rounded-lg border border-surface-400 text-surface-600 hover:text-white hover:border-accent-cyan transition-all">
+          📋 Coller du texte brut
+        </button>
+      </div>
+    </div>
+
+    <!-- BARRE DE PROGRESSION (cachée par défaut) -->
+    <div id="progressBar" class="hidden mb-4 animate-in">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs text-surface-600" id="progressLabel">Analyse en cours...</span>
+        <span class="text-xs text-accent-green font-mono" id="progressPercent">0%</span>
+      </div>
+      <div class="w-full h-1.5 bg-surface-300 rounded-full overflow-hidden">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- PANNEAU DE STATISTIQUES -->
+    <div id="statsPanel" class="hidden mb-6 animate-in">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3" id="statsGrid">
+        <!-- Rempli dynamiquement -->
+      </div>
+    </div>
+
+    <!-- VUE SPLIT : ORIGINAL vs SANITIZED -->
+    <div id="splitView" class="hidden animate-in">
+      <!-- Onglets -->
+      <div class="flex items-center border-b border-surface-300 mb-0">
+        <button class="tab-btn active px-4 py-2.5 text-sm font-medium border-b-2 border-transparent"
+          onclick="switchTab('split')" data-tab="split">
+          Côte à côte
+        </button>
+        <button class="tab-btn px-4 py-2.5 text-sm font-medium text-surface-600 border-b-2 border-transparent"
+          onclick="switchTab('sanitized')" data-tab="sanitized">
+          Résultat seul
+        </button>
+        <button class="tab-btn px-4 py-2.5 text-sm font-medium text-surface-600 border-b-2 border-transparent"
+          onclick="switchTab('mapping')" data-tab="mapping">
+          Table de mapping
+        </button>
+        <!-- Info fichier -->
+        <div class="ml-auto flex items-center gap-2 px-3">
+          <span class="text-xs text-surface-500 font-mono" id="fileInfo"></span>
+        </div>
+      </div>
+
+      <!-- Conteneur des panneaux -->
+      <div class="bg-surface-200 border border-surface-300 border-t-0 rounded-b-xl overflow-hidden">
+
+        <!-- Tab: Split View -->
+        <div id="tabSplit" class="tab-content grid grid-cols-2 divide-x divide-surface-300" style="height: 65vh;">
+          <div class="flex flex-col">
+            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-surface-500"></span>
+              <span class="text-xs font-medium text-surface-600 uppercase tracking-wider">Original</span>
+            </div>
+            <div id="panelOriginal" class="code-panel flex-1 overflow-auto p-4 text-surface-600"></div>
+          </div>
+          <div class="flex flex-col">
+            <div class="px-4 py-2 bg-surface-300/50 border-b border-surface-300 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-accent-green"></span>
+              <span class="text-xs font-medium text-surface-600 uppercase tracking-wider">Sanitizé</span>
+            </div>
+            <div id="panelSanitized" class="code-panel flex-1 overflow-auto p-4"></div>
+          </div>
+        </div>
+
+        <!-- Tab: Sanitized Only -->
+        <div id="tabSanitized" class="tab-content hidden" style="height: 65vh;">
+          <div id="panelSanitizedFull" class="code-panel overflow-auto p-4 h-full"></div>
+        </div>
+
+        <!-- Tab: Mapping Table -->
+        <div id="tabMapping" class="tab-content hidden overflow-auto" style="height: 65vh;">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-surface-300">
+              <tr>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Tag</th>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Valeur originale</th>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Catégorie</th>
+                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Occurrences</th>
+              </tr>
+            </thead>
+            <tbody id="mappingTableBody" class="divide-y divide-surface-300 font-mono text-xs"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================
+       MODAL PASTE
+       ======================================================== -->
+  <div id="pasteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-surface-200 border border-surface-400 rounded-xl w-full max-w-2xl p-6 mx-4">
+      <h3 class="text-white font-medium mb-3">Coller du texte brut</h3>
+      <textarea id="pasteArea"
+        class="w-full h-64 bg-surface-100 border border-surface-400 rounded-lg p-4 font-mono text-sm text-surface-600 focus:outline-none focus:border-accent-cyan resize-none"
+        placeholder="Collez votre contenu de log ici..."></textarea>
+      <div class="flex justify-end gap-3 mt-4">
+        <button onclick="closePasteModal()"
+          class="px-4 py-2 text-sm rounded-lg border border-surface-400 text-surface-600 hover:text-white transition-all">
+          Annuler
+        </button>
+        <button onclick="processPastedText()"
+          class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/30 text-accent-green hover:bg-accent-green/30 transition-all font-medium">
+          Analyser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       JAVASCRIPT — MOTEUR DE SANITIZATION
+       ======================================================== -->
+  <script>
+  /**
+   * =============================================================
+   * LOGSHIELD — MOTEUR DE SANITIZATION ZERO-SERVER
+   * =============================================================
+   *
+   * Architecture :
+   *   1. RULES_DICTIONARY : Toutes les règles de détection regex
+   *   2. SanitizationEngine : Moteur avec mapping cohérent
+   *   3. UI Controller : Gestion de l'interface
+   *
+   * Pour ajouter une nouvelle règle :
+   *   → Ajoutez un objet dans RULES_DICTIONARY avec :
+   *     - id: identifiant unique (string)
+   *     - name: nom lisible
+   *     - category: catégorie d'affichage
+   *     - cssClass: classe CSS pour le highlight (san-xxx)
+   *     - prefix: préfixe du tag de remplacement (ex: "IP")
+   *     - regex: expression régulière (avec flag 'g')
+   *     - profiles: tableau des profils qui activent cette règle
+   *     - priority: ordre d'exécution (plus bas = exécuté en premier)
+   *     - validator: (optionnel) fonction pour filtrer les faux positifs
+   */
+
+  // =============================================================
+  // 1. DICTIONNAIRE DE RÈGLES
+  // =============================================================
+  // IMPORTANT : l'ordre d'exécution est déterminé par `priority`.
+  // Les règles avec les priorités les plus basses s'exécutent en
+  // premier. L'IPv6 doit être traitée AVANT l'IPv4 pour éviter
+  // de capturer partiellement des segments IPv6.
+
+  const RULES_DICTIONARY = [
+
+    // --- ADRESSES IP ---
+    {
+      id: 'ipv6',
+      name: 'Adresses IPv6',
+      category: 'ip',
+      cssClass: 'san-ip',
+      prefix: 'IPv6',
+      profiles: ['standard', 'network', 'cloud'],
+      priority: 10,
+      // Capture les formats IPv6 courants (complets, abrégés, mappés IPv4)
+      regex: /(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9]))/g,
+    },
+    {
+      id: 'ipv4',
+      name: 'Adresses IPv4',
+      category: 'ip',
+      cssClass: 'san-ip',
+      prefix: 'IP',
+      profiles: ['standard', 'network', 'cloud'],
+      priority: 20,
+      regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
+      // Filtre les faux positifs comme les numéros de version (1.2.3.4)
+      validator: (match, context) => {
+        // Exclure si précédé de "version", "v", ou "=" suivi immédiatement
+        const beforeIdx = context.lastIndexOf('\n', context.indexOf(match)) + 1;
+        const lineBefore = context.substring(beforeIdx, context.indexOf(match)).toLowerCase();
+        if (/(?:version|ver\.?|v)\s*$/.test(lineBefore)) return false;
+        return true;
+      }
+    },
+
+    // --- ADRESSES EMAIL ---
+    {
+      id: 'email',
+      name: 'Adresses e-mail',
+      category: 'email',
+      cssClass: 'san-email',
+      prefix: 'EMAIL',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 30,
+      regex: /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g,
+    },
+
+    // --- CLÉS API / TOKENS / SECRETS ---
+    {
+      id: 'aws_key',
+      name: 'Clés AWS',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'AWS_KEY',
+      profiles: ['standard', 'cloud'],
+      priority: 40,
+      // Format: AKIA suivi de 16 caractères alphanumériques
+      regex: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g,
+    },
+    {
+      id: 'aws_arn',
+      name: 'ARN AWS',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'ARN',
+      profiles: ['standard', 'cloud'],
+      priority: 41,
+      regex: /\barn:aws[a-zA-Z\-]*:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]*:\d{12}:[a-zA-Z0-9\-_\/.:]+\b/g,
+    },
+    {
+      id: 'generic_api_key',
+      name: 'Clés API génériques',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'API_KEY',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 45,
+      // Détecte les patterns "api_key=xxx", "token: xxx", "secret=xxx", "password=xxx", etc.
+      regex: /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer|secret[_-]?key|private[_-]?key|client[_-]?secret|password|passwd|pwd)[\s]*[=:]\s*["']?([a-zA-Z0-9\-_.~+\/]{16,})["']?/gi,
+      // Pour cette règle, on capture le groupe 1 (la valeur) séparément
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+    {
+      id: 'bearer_token',
+      name: 'Bearer tokens',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'BEARER',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 46,
+      regex: /Bearer\s+[a-zA-Z0-9\-_.~+\/]{20,}/gi,
+    },
+    {
+      id: 'jwt_token',
+      name: 'Tokens JWT',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'JWT',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 47,
+      // Format JWT : 3 segments base64url séparés par des points
+      regex: /\beyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\b/g,
+    },
+    {
+      id: 'high_entropy_hex',
+      name: 'Tokens hexadécimaux (entropie haute)',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'TOKEN',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 48,
+      // Séquences hex de 32+ caractères (API keys, session IDs, hashes)
+      regex: /\b[a-fA-F0-9]{32,}\b/g,
+      validator: (match) => {
+        // Vérifier que ce n'est pas un UUID (traité séparément) ou un hash courant trop court
+        if (/^[0-9]+$/.test(match)) return false; // Nombres purs
+        // Vérifier une entropie minimum (pas que des 0 ou des f)
+        const unique = new Set(match.toLowerCase()).size;
+        return unique >= 6;
+      }
+    },
+    {
+      id: 'uuid',
+      name: 'UUIDs',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'UUID',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 43,
+      regex: /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g,
+    },
+    {
+      id: 'session_id',
+      name: 'IDs de session',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'SESSION',
+      profiles: ['standard', 'applicatif'],
+      priority: 49,
+      // Pattern : session_id=xxx, JSESSIONID=xxx, sid=xxx, phpsessid=xxx
+      regex: /(?:session[_-]?id|jsessionid|phpsessid|sid|sess)[\s]*[=:]\s*["']?([a-zA-Z0-9\-_.~+\/]{8,})["']?/gi,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+
+    // --- CHEMINS DE FICHIERS ---
+    {
+      id: 'path_windows',
+      name: 'Chemins Windows',
+      category: 'path',
+      cssClass: 'san-path',
+      prefix: 'PATH',
+      profiles: ['standard', 'applicatif'],
+      priority: 60,
+      regex: /[A-Z]:\\(?:[^\s\\:*?"<>|]+\\)*[^\s\\:*?"<>|]+/gi,
+    },
+    {
+      id: 'path_unix',
+      name: 'Chemins Unix',
+      category: 'path',
+      cssClass: 'san-path',
+      prefix: 'PATH',
+      profiles: ['standard', 'applicatif'],
+      priority: 61,
+      // Chemins commençant par / avec au moins 2 segments
+      regex: /(?:\/(?:home|var|etc|opt|usr|tmp|srv|mnt|root|proc|sys|dev|log|data|app|config|backup)[^\s,;)}\]"']+)/gi,
+    },
+    {
+      id: 'unc_path',
+      name: 'Chemins UNC',
+      category: 'path',
+      cssClass: 'san-path',
+      prefix: 'UNC',
+      profiles: ['standard', 'applicatif', 'network'],
+      priority: 59,
+      regex: /\\\\[^\s\\]+(?:\\[^\s\\]+)+/g,
+    },
+
+    // --- NOMS D'UTILISATEURS ---
+    {
+      id: 'username_pattern',
+      name: "Noms d'utilisateur (patterns)",
+      category: 'user',
+      cssClass: 'san-user',
+      prefix: 'USER',
+      profiles: ['standard', 'applicatif'],
+      priority: 70,
+      // Détecte user=xxx, login=xxx, username:xxx, account:xxx, etc.
+      regex: /(?:user(?:name)?|login|account|owner|author|created[_-]?by|modified[_-]?by|assignee|admin|operator|caller)[\s]*[=:]\s*["']?([a-zA-Z0-9._\-@]{2,40})["']?/gi,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+
+    // --- HOSTNAMES / DOMAINES ---
+    {
+      id: 'hostname',
+      name: 'Hostnames / Domaines internes',
+      category: 'hostname',
+      cssClass: 'san-hostname',
+      prefix: 'HOST',
+      profiles: ['standard', 'network', 'cloud'],
+      priority: 80,
+      // Détecte les noms d'hôtes internes (xxx.internal, xxx.local, srv-xxx, etc.)
+      regex: /\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+(?:internal|local|corp|intranet|lan|private|home|test|dev|staging|prod)\b/gi,
+    },
+    {
+      id: 'url',
+      name: 'URLs complètes',
+      category: 'hostname',
+      cssClass: 'san-hostname',
+      prefix: 'URL',
+      profiles: ['standard', 'network', 'cloud'],
+      priority: 81,
+      regex: /https?:\/\/[^\s"'<>)}\]]+/gi,
+    },
+
+    // --- MAC ADDRESSES ---
+    {
+      id: 'mac_address',
+      name: 'Adresses MAC',
+      category: 'ip',
+      cssClass: 'san-ip',
+      prefix: 'MAC',
+      profiles: ['standard', 'network'],
+      priority: 25,
+      regex: /\b(?:[0-9a-fA-F]{2}[:\-]){5}[0-9a-fA-F]{2}\b/g,
+    },
+  ];
+
+
+  // =============================================================
+  // 2. MOTEUR DE SANITIZATION
+  // =============================================================
+
+  class SanitizationEngine {
+    constructor() {
+      this.reset();
+    }
+
+    /**
+     * Réinitialise l'état du moteur (mappings, compteurs, etc.)
+     */
+    reset() {
+      // Map: valeur originale → { tag, category, cssClass, count }
+      this.mappings = new Map();
+      // Compteurs par catégorie pour générer les tags séquentiels
+      this.counters = {};
+      // Stats de remplacement par catégorie
+      this.stats = {};
+    }
+
+    /**
+     * Obtient ou crée un tag anonymisé pour une valeur donnée.
+     * Garantit la cohérence : même valeur → même tag.
+     */
+    getOrCreateTag(value, rule) {
+      const normalizedValue = value.trim();
+      if (this.mappings.has(normalizedValue)) {
+        const entry = this.mappings.get(normalizedValue);
+        entry.count++;
+        return entry.tag;
+      }
+
+      // Incrémente le compteur pour cette catégorie de préfixe
+      if (!this.counters[rule.prefix]) {
+        this.counters[rule.prefix] = 0;
+      }
+      this.counters[rule.prefix]++;
+
+      const tag = `[${rule.prefix}_${this.counters[rule.prefix]}]`;
+      this.mappings.set(normalizedValue, {
+        tag,
+        category: rule.category,
+        cssClass: rule.cssClass,
+        ruleName: rule.name,
+        count: 1,
+      });
+
+      return tag;
+    }
+
+    /**
+     * Lance la sanitization du texte avec les règles actives.
+     * @param {string} text - Contenu brut du log
+     * @param {string} profile - Profil de nettoyage sélectionné
+     * @param {Set} disabledCategories - Catégories désactivées par l'utilisateur
+     * @param {Function} onProgress - Callback de progression (0-100)
+     * @returns {{ sanitized: string, highlighted: string }}
+     */
+    sanitize(text, profile, disabledCategories, onProgress) {
+      this.reset();
+      this.stats = {};
+
+      // Filtre et trie les règles actives
+      const activeRules = RULES_DICTIONARY
+        .filter(r => r.profiles.includes(profile))
+        .filter(r => !disabledCategories.has(r.category))
+        .sort((a, b) => a.priority - b.priority);
+
+      let result = text;
+      const totalRules = activeRules.length;
+
+      // -------------------------------------------------------
+      // PASSE 1 : Détection et construction du mapping
+      // On parcourt le texte avec chaque règle pour identifier
+      // toutes les valeurs sensibles et leur attribuer un tag.
+      // -------------------------------------------------------
+      const allReplacements = []; // { start, end, tag, cssClass, originalValue }
+
+      activeRules.forEach((rule, ruleIdx) => {
+        const regex = new RegExp(rule.regex.source, rule.regex.flags);
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+          let value = match[0];
+
+          // Si la règle a un extracteur personnalisé, on l'utilise
+          if (rule.extractMatch) {
+            const groups = match.slice(1);
+            value = rule.extractMatch(match[0], groups);
+          }
+
+          // Validation optionnelle (filtre les faux positifs)
+          if (rule.validator && !rule.validator(value, text)) {
+            continue;
+          }
+
+          // Trouver la position exacte de la valeur dans le match
+          let start, end;
+          if (rule.extractMatch) {
+            // La valeur extraite est un sous-groupe, on cherche sa position
+            const valIdx = match[0].indexOf(value);
+            start = match.index + (valIdx >= 0 ? valIdx : 0);
+            end = start + value.length;
+          } else {
+            start = match.index;
+            end = match.index + value.length;
+          }
+
+          const tag = this.getOrCreateTag(value, rule);
+          allReplacements.push({ start, end, tag, cssClass: rule.cssClass, originalValue: value });
+        }
+
+        if (onProgress) {
+          onProgress(Math.round(((ruleIdx + 1) / totalRules) * 80));
+        }
+      });
+
+      // -------------------------------------------------------
+      // PASSE 2 : Application des remplacements
+      // On trie par position décroissante pour remplacer de la
+      // fin vers le début (évite le décalage des indices).
+      // -------------------------------------------------------
+
+      // Déduplique les chevauchements : on garde le match le plus long
+      allReplacements.sort((a, b) => a.start - b.start || b.end - a.end);
+      const finalReplacements = [];
+      let lastEnd = -1;
+      for (const rep of allReplacements) {
+        if (rep.start >= lastEnd) {
+          finalReplacements.push(rep);
+          lastEnd = rep.end;
+        }
+      }
+
+      // Construit le texte sanitizé et la version HTML avec highlights
+      let sanitized = '';
+      let highlighted = '';
+      let cursor = 0;
+
+      for (const rep of finalReplacements) {
+        // Texte avant le remplacement
+        const before = text.substring(cursor, rep.start);
+        sanitized += before + rep.tag;
+        highlighted += escapeHtml(before) +
+          `<span class="${rep.cssClass}">${escapeHtml(rep.tag)}</span>`;
+        cursor = rep.end;
+
+        // Mise à jour des stats
+        const cat = rep.cssClass.replace('san-', '');
+        if (!this.stats[cat]) this.stats[cat] = 0;
+        this.stats[cat]++;
+      }
+
+      // Ajoute le reste du texte
+      sanitized += text.substring(cursor);
+      highlighted += escapeHtml(text.substring(cursor));
+
+      if (onProgress) onProgress(100);
+
+      return { sanitized, highlighted };
+    }
+
+    /**
+     * Retourne les statistiques de détection.
+     */
+    getStats() {
+      return this.stats;
+    }
+
+    /**
+     * Retourne la table de mapping complète.
+     */
+    getMappingTable() {
+      const table = [];
+      this.mappings.forEach((entry, originalValue) => {
+        table.push({
+          tag: entry.tag,
+          original: originalValue,
+          category: entry.ruleName,
+          cssClass: entry.cssClass,
+          count: entry.count,
+        });
+      });
+      return table.sort((a, b) => a.tag.localeCompare(b.tag));
+    }
+  }
+
+
+  // =============================================================
+  // 3. UTILITAIRES
+  // =============================================================
+
+  /** Échappe le HTML pour l'affichage sûr dans les panneaux de code */
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** Formate un texte avec numéros de lignes */
+  function formatWithLineNumbers(html) {
+    const lines = html.split('\n');
+    return lines.map((line, i) =>
+      `<span class="code-line"><span class="line-num">${i + 1}</span>${line}</span>`
+    ).join('\n');
+  }
+
+
+  // =============================================================
+  // 4. CONTRÔLEUR D'INTERFACE
+  // =============================================================
+
+  const engine = new SanitizationEngine();
+  let currentOriginalText = '';
+  let currentSanitizedText = '';
+  let currentFileName = 'sanitized-log.txt';
+
+  // Catégories avec labels et couleurs pour les toggles
+  const CATEGORIES = {
+    ip:       { label: 'IPs / MAC', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    email:    { label: 'Emails', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    path:     { label: 'Chemins', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    key:      { label: 'Clés / Tokens', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+    user:     { label: 'Utilisateurs', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+    hostname: { label: 'Hosts / URLs', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  };
+
+  const disabledCategories = new Set();
+
+  // --- Initialisation des toggles de catégories ---
+  function initCategoryToggles() {
+    const container = document.getElementById('categoryToggles');
+    container.innerHTML = '';
+    Object.entries(CATEGORIES).forEach(([catId, cat]) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-center gap-1.5';
+      wrapper.innerHTML = `
+        <div class="toggle-track active" data-category="${catId}" onclick="toggleCategory('${catId}', this)">
+          <div class="toggle-knob"></div>
+        </div>
+        <span class="text-xs ${cat.color.split(' ')[1]}">${cat.label}</span>
+      `;
+      container.appendChild(wrapper);
+    });
+  }
+
+  function toggleCategory(catId, el) {
+    if (disabledCategories.has(catId)) {
+      disabledCategories.delete(catId);
+      el.classList.add('active');
+    } else {
+      disabledCategories.add(catId);
+      el.classList.remove('active');
+    }
+    // Re-sanitize si un fichier est chargé
+    if (currentOriginalText) {
+      processSanitization(currentOriginalText);
+    }
+  }
+
+  // --- Gestion du profil ---
+  document.getElementById('profileSelect').addEventListener('change', () => {
+    if (currentOriginalText) {
+      processSanitization(currentOriginalText);
+    }
+  });
+
+  // --- Drag & Drop ---
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropZone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropZone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+    });
+  });
+
+  dropZone.addEventListener('drop', e => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleFile(files[0]);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    currentFileName = 'sanitized-' + file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      currentOriginalText = text;
+      document.getElementById('fileInfo').textContent =
+        `${file.name} — ${(file.size / 1024).toFixed(1)} Ko — ${text.split('\n').length} lignes`;
+      processSanitization(text);
+    };
+    reader.readAsText(file);
+  }
+
+  // --- Paste modal ---
+  function openPasteModal() {
+    document.getElementById('pasteModal').classList.remove('hidden');
+    document.getElementById('pasteArea').focus();
+  }
+  function closePasteModal() {
+    document.getElementById('pasteModal').classList.add('hidden');
+  }
+  function processPastedText() {
+    const text = document.getElementById('pasteArea').value;
+    if (!text.trim()) return;
+    currentOriginalText = text;
+    currentFileName = 'sanitized-paste.txt';
+    document.getElementById('fileInfo').textContent =
+      `Texte collé — ${text.length} car. — ${text.split('\n').length} lignes`;
+    closePasteModal();
+    processSanitization(text);
+  }
+
+  // --- Moteur principal ---
+  function processSanitization(text) {
+    const profile = document.getElementById('profileSelect').value;
+
+    // Affiche la barre de progression
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const progressPercent = document.getElementById('progressPercent');
+    progressBar.classList.remove('hidden');
+
+    // Lance le traitement (asynchrone pour ne pas bloquer l'UI)
+    requestAnimationFrame(() => {
+      const { sanitized, highlighted } = engine.sanitize(
+        text, profile, disabledCategories,
+        (pct) => {
+          progressFill.style.width = pct + '%';
+          progressPercent.textContent = pct + '%';
+        }
+      );
+
+      currentSanitizedText = sanitized;
+
+      // Met à jour les panneaux
+      const originalHtml = formatWithLineNumbers(escapeHtml(text));
+      const sanitizedHtml = formatWithLineNumbers(highlighted);
+
+      document.getElementById('panelOriginal').innerHTML = originalHtml;
+      document.getElementById('panelSanitized').innerHTML = sanitizedHtml;
+      document.getElementById('panelSanitizedFull').innerHTML = sanitizedHtml;
+
+      // Synchronise le scroll entre les deux panneaux
+      syncScroll();
+
+      // Met à jour les stats
+      updateStats(engine.getStats());
+      updateMappingTable(engine.getMappingTable());
+
+      // Affiche les sections
+      document.getElementById('splitView').classList.remove('hidden');
+      document.getElementById('statsPanel').classList.remove('hidden');
+
+      // Active les boutons d'export
+      document.getElementById('btnExport').disabled = false;
+      document.getElementById('btnExportMapping').disabled = false;
+
+      // Cache la progression après un court délai
+      setTimeout(() => { progressBar.classList.add('hidden'); }, 800);
+    });
+  }
+
+  // --- Scroll synchronisé ---
+  function syncScroll() {
+    const original = document.getElementById('panelOriginal');
+    const sanitized = document.getElementById('panelSanitized');
+    let syncing = false;
+
+    original.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true;
+      sanitized.scrollTop = original.scrollTop;
+      sanitized.scrollLeft = original.scrollLeft;
+      requestAnimationFrame(() => { syncing = false; });
+    });
+
+    sanitized.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true;
+      original.scrollTop = sanitized.scrollTop;
+      original.scrollLeft = sanitized.scrollLeft;
+      requestAnimationFrame(() => { syncing = false; });
+    });
+  }
+
+  // --- Stats ---
+  const STAT_META = {
+    ip:       { icon: '🌐', label: 'IPs / MAC', gradClass: 'from-blue-500/20 to-blue-500/5 border-blue-500/20' },
+    email:    { icon: '📧', label: 'Emails', gradClass: 'from-purple-500/20 to-purple-500/5 border-purple-500/20' },
+    path:     { icon: '📁', label: 'Chemins', gradClass: 'from-orange-500/20 to-orange-500/5 border-orange-500/20' },
+    key:      { icon: '🔑', label: 'Clés / Tokens', gradClass: 'from-red-500/20 to-red-500/5 border-red-500/20' },
+    user:     { icon: '👤', label: 'Utilisateurs', gradClass: 'from-yellow-500/20 to-yellow-500/5 border-yellow-500/20' },
+    hostname: { icon: '🖥️', label: 'Hosts / URLs', gradClass: 'from-green-500/20 to-green-500/5 border-green-500/20' },
+  };
+
+  function updateStats(stats) {
+    const grid = document.getElementById('statsGrid');
+    grid.innerHTML = '';
+    Object.entries(STAT_META).forEach(([key, meta]) => {
+      const count = stats[key] || 0;
+      const card = document.createElement('div');
+      card.className = `stat-badge rounded-lg border bg-gradient-to-br ${meta.gradClass} p-3`;
+      card.innerHTML = `
+        <div class="text-lg mb-1">${meta.icon}</div>
+        <div class="text-2xl font-bold text-white font-mono">${count}</div>
+        <div class="text-xs text-surface-600 mt-0.5">${meta.label}</div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  // --- Table de mapping ---
+  function updateMappingTable(table) {
+    const tbody = document.getElementById('mappingTableBody');
+    tbody.innerHTML = '';
+    if (table.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-surface-500">Aucun mapping généré</td></tr>';
+      return;
+    }
+    table.forEach(entry => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-surface-300/30 transition-colors';
+      tr.innerHTML = `
+        <td class="px-4 py-2"><span class="${entry.cssClass}">${escapeHtml(entry.tag)}</span></td>
+        <td class="px-4 py-2 text-surface-600">${escapeHtml(entry.original.length > 80 ? entry.original.substring(0, 80) + '…' : entry.original)}</td>
+        <td class="px-4 py-2 text-surface-500">${escapeHtml(entry.category)}</td>
+        <td class="px-4 py-2 text-white">${entry.count}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- Onglets ---
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+      el.classList.remove('active');
+      if (el.dataset.tab === tabName) el.classList.add('active');
+    });
+    document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.remove('hidden');
+  }
+
+  // --- Export fichier sanitizé ---
+  function exportSanitized() {
+    if (!currentSanitizedText) return;
+    const blob = new Blob([currentSanitizedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentFileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // --- Export mapping JSON ---
+  function exportMapping() {
+    const table = engine.getMappingTable();
+    if (table.length === 0) return;
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      profile: document.getElementById('profileSelect').value,
+      totalMappings: table.length,
+      mappings: table.map(e => ({
+        tag: e.tag,
+        original: e.original,
+        category: e.category,
+        occurrences: e.count,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mapping-' + currentFileName.replace(/\.\w+$/, '') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // --- Reset complet ---
+  function resetAll() {
+    engine.reset();
+    currentOriginalText = '';
+    currentSanitizedText = '';
+    currentFileName = 'sanitized-log.txt';
+    document.getElementById('splitView').classList.add('hidden');
+    document.getElementById('statsPanel').classList.add('hidden');
+    document.getElementById('progressBar').classList.add('hidden');
+    document.getElementById('btnExport').disabled = true;
+    document.getElementById('btnExportMapping').disabled = true;
+    document.getElementById('fileInfo').textContent = '';
+    document.getElementById('panelOriginal').innerHTML = '';
+    document.getElementById('panelSanitized').innerHTML = '';
+    document.getElementById('panelSanitizedFull').innerHTML = '';
+    document.getElementById('pasteArea').value = '';
+    fileInput.value = '';
+    // Réactive toutes les catégories
+    disabledCategories.clear();
+    initCategoryToggles();
+  }
+
+  // --- Init ---
+  initCategoryToggles();
+
+  </script>
+</body>
+</html>
