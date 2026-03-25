@@ -1,15 +1,16 @@
 # LogSanitizer — Zero-Server Log Sanitizer
 
-Application web de sanitization de logs **100% locale** (zéro backend, zéro connexion réseau).
-Conçue pour les environnements airgapped et le traitement de logs confidentiels.
+A **100% local** web application for log sanitization (no backend, no network connection).
+Designed for air-gapped environments and the processing of confidential logs.
 
-## Fonctionnalités
+## Features
 - Drag & drop (.txt, .log, .json, .csv, .xml, .yaml)
-- 16 règles de détection regex (IPv4/IPv6, emails, clés API, chemins, etc.)
-- 4 profils de nettoyage (Standard, Réseau, Applicatif, Cloud)
-- Anonymisation cohérente (même IP → même tag partout)
-- Vue diff côte à côte avec highlights colorés
-- Export fichier nettoyé + table de mapping JSON
+- 16 regex detection rules (IPv4/IPv6, emails, API keys, paths, etc.)
+- 4 sanitization profiles (Standard, Network, Application, Cloud)
+- Consistent anonymization (same IP → same tag everywhere)
+- Side-by-side diff view with color-coded highlights
+- Export sanitized file + JSON mapping table
 
-## Utilisation
-Ouvrir `log-sanitizer.html` dans un navigateur. Aucune installation requise.
+## Usage
+Open `log-sanitizer.html` in a browser. No installation required.
+
