@@ -1,0 +1,37 @@
+[
+  {
+    "id": "standard",
+    "name": "Standard",
+    "icon": "\ud83d\udee1\ufe0f",
+    "description": "Maximum protection \u2014 all rules",
+    "categories": "all"
+  },
+  {
+    "id": "network",
+    "name": "Network",
+    "icon": "\ud83c\udf10",
+    "description": "IPs, MAC, hostnames, URLs",
+    "categories": ["ip", "hostname"]
+  },
+  {
+    "id": "applicatif",
+    "name": "Application",
+    "icon": "\u2699\ufe0f",
+    "description": "Users, sessions, paths, tokens",
+    "categories": ["user", "path", "key", "email"]
+  },
+  {
+    "id": "cloud",
+    "name": "Cloud",
+    "icon": "\u2601\ufe0f",
+    "description": "API keys, ARNs, cloud endpoints",
+    "categories": ["key", "hostname", "ip", "email"]
+  },
+  {
+    "id": "tenable",
+    "name": "Tenable / Nessus",
+    "icon": "\ud83d\udd2c",
+    "description": "SecurityCenter & Nessus Scanner",
+    "categories": ["ip", "key", "user", "hostname", "cred"]
+  }
+]

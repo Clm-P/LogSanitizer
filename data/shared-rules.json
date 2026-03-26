@@ -1,0 +1,209 @@
+[
+  {
+    "id": "ipv6",
+    "name": "IPv6 Addresses",
+    "category": "ip",
+    "prefix": "IPv6",
+    "priority": 10,
+    "regexPattern": "(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9]))",
+    "regexFlags": "g"
+  },
+  {
+    "id": "ipv4",
+    "name": "IPv4 Addresses",
+    "category": "ip",
+    "prefix": "IP",
+    "priority": 20,
+    "regexPattern": "\\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\b",
+    "regexFlags": "g",
+    "validatorId": "ipv4_version_filter"
+  },
+  {
+    "id": "mac_address",
+    "name": "MAC Addresses",
+    "category": "ip",
+    "prefix": "MAC",
+    "priority": 25,
+    "regexPattern": "\\b(?:[0-9a-fA-F]{2}[:\\-]){5}[0-9a-fA-F]{2}\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "email",
+    "name": "Email Addresses",
+    "category": "email",
+    "prefix": "EMAIL",
+    "priority": 30,
+    "regexPattern": "\\b[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "aws_key",
+    "name": "AWS Keys",
+    "category": "key",
+    "prefix": "AWS_KEY",
+    "priority": 40,
+    "regexPattern": "\\b(?:AKIA|ASIA)[A-Z0-9]{16}\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "aws_arn",
+    "name": "AWS ARNs",
+    "category": "key",
+    "prefix": "ARN",
+    "priority": 41,
+    "regexPattern": "\\barn:aws[a-zA-Z\\-]*:[a-zA-Z0-9\\-]+:[a-zA-Z0-9\\-]*:\\d{12}:[a-zA-Z0-9\\-_\\/.:]+\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "uuid",
+    "name": "UUIDs",
+    "category": "key",
+    "prefix": "UUID",
+    "priority": 43,
+    "regexPattern": "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "generic_api_key",
+    "name": "Generic API Keys",
+    "category": "key",
+    "prefix": "API_KEY",
+    "priority": 45,
+    "regexPattern": "(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer|secret[_-]?key|private[_-]?key|client[_-]?secret|password|passwd|pwd)[\\s]*[=:]\\s*[\"']?([a-zA-Z0-9\\-_.~+\\/]{16,})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "bearer_token",
+    "name": "Bearer tokens",
+    "category": "key",
+    "prefix": "BEARER",
+    "priority": 46,
+    "regexPattern": "Bearer\\s+[a-zA-Z0-9\\-_.~+\\/]{20,}",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "jwt_token",
+    "name": "JWT Tokens",
+    "category": "key",
+    "prefix": "JWT",
+    "priority": 47,
+    "regexPattern": "\\beyJ[a-zA-Z0-9\\-_]+\\.eyJ[a-zA-Z0-9\\-_]+\\.[a-zA-Z0-9\\-_]+\\b",
+    "regexFlags": "g"
+  },
+  {
+    "id": "high_entropy_hex",
+    "name": "Hex Tokens (high entropy)",
+    "category": "key",
+    "prefix": "TOKEN",
+    "priority": 48,
+    "regexPattern": "\\b[a-fA-F0-9]{32,}\\b",
+    "regexFlags": "g",
+    "validatorId": "hex_entropy_filter"
+  },
+  {
+    "id": "session_id",
+    "name": "Session IDs",
+    "category": "key",
+    "prefix": "SESSION",
+    "priority": 49,
+    "regexPattern": "(?:session[_-]?id|jsessionid|phpsessid|sid|sess)[\\s]*[=:]\\s*[\"']?([a-zA-Z0-9\\-_.~+\\/]{8,})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "scan_credentials",
+    "name": "Scan Credentials (SSH/SMB/WMI)",
+    "category": "cred",
+    "prefix": "CRED",
+    "priority": 50,
+    "regexPattern": "(?:smb|ssh|wmi|telnet|rsh|rdp|ftp)(?:_login|_password|_username|_pass|_user)\\s*[=:]\\s*[\"']?([^\\s\"'\\n\\r]{2,80})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "snmp_community",
+    "name": "SNMP Community Strings",
+    "category": "cred",
+    "prefix": "SNMP",
+    "priority": 51,
+    "regexPattern": "(?:community\\s+string|snmp[_\\-]?community|community[_\\-]?name)\\s*[=:]\\s*[\"']?([a-zA-Z0-9_\\-@!#$%^&*]{1,40})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "unc_path",
+    "name": "UNC Paths",
+    "category": "path",
+    "prefix": "UNC",
+    "priority": 59,
+    "regexPattern": "\\\\\\\\[^\\s\\\\]+(?:\\\\[^\\s\\\\]+)+",
+    "regexFlags": "g"
+  },
+  {
+    "id": "path_windows",
+    "name": "Windows Paths",
+    "category": "path",
+    "prefix": "PATH",
+    "priority": 60,
+    "regexPattern": "[A-Z]:\\\\(?:[^\\s\\\\:*?\"<>|]+\\\\)*[^\\s\\\\:*?\"<>|]+",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "path_unix",
+    "name": "Unix Paths",
+    "category": "path",
+    "prefix": "PATH",
+    "priority": 61,
+    "regexPattern": "(?:\\/(?:home|var|etc|opt|usr|tmp|srv|mnt|root|proc|sys|dev|log|data|app|config|backup)[^\\s,;)}\\]\"']+)",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "username_pattern",
+    "name": "Usernames (patterns)",
+    "category": "user",
+    "prefix": "USER",
+    "priority": 70,
+    "regexPattern": "(?:user(?:name)?|login|account|owner|author|created[_-]?by|modified[_-]?by|assignee|admin|operator|caller)[\\s]*[=:]\\s*[\"']?([a-zA-Z0-9._\\-@]{2,40})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "windows_domain_user",
+    "name": "Windows DOMAIN\\User Accounts",
+    "category": "user",
+    "prefix": "USER",
+    "priority": 71,
+    "regexPattern": "\\b[A-Za-z0-9_\\-]{2,20}\\\\[a-zA-Z0-9._\\-]{2,40}\\b",
+    "regexFlags": "g",
+    "validatorId": "windows_domain_filter"
+  },
+  {
+    "id": "hostname",
+    "name": "Hostnames / Internal Domains",
+    "category": "hostname",
+    "prefix": "HOST",
+    "priority": 80,
+    "regexPattern": "\\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+(?:internal|local|corp|intranet|lan|private|home|test|dev|staging|prod|int|ad|mil|dom|domain)\\b",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "url",
+    "name": "Full URLs",
+    "category": "hostname",
+    "prefix": "URL",
+    "priority": 81,
+    "regexPattern": "https?:\\/\\/[^\\s\"'<>)}\\]]+",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "nessus_host_info",
+    "name": "NetBIOS / DNS Name (Nessus output)",
+    "category": "hostname",
+    "prefix": "HOST",
+    "priority": 83,
+    "regexPattern": "(?:NetBIOS\\s+(?:Computer\\s+)?[Nn]ame|DNS\\s+[Nn]ame|[Cc]ommon\\s+[Nn]ame|[Hh]ostname)\\s*:\\s*([^\\s,\\n\\r]+)",
+    "regexFlags": "g",
+    "extractGroup": true
+  }
+]

@@ -393,6 +393,21 @@
     .code-line { display: block; padding: 1px 0; }
     .code-line:hover { background: rgba(88, 166, 255, 0.04); }
 
+    /* Virtual scroller */
+    .virtual-scroller {
+      overflow-y: auto;
+      position: relative;
+    }
+    .virtual-scroller-spacer {
+      width: 100%;
+    }
+    .virtual-scroller-viewport {
+      position: absolute;
+      left: 0; right: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
     /* Toggle switch */
     .toggle-track {
       width: 36px; height: 20px; border-radius: 10px;
@@ -544,6 +559,10 @@
         class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
         📋 Export Mapping
       </button>
+      <button id="btnCopy" onclick="copySanitized()" disabled
+        class="px-4 py-2 text-sm rounded-lg border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+        📋 Copy to clipboard
+      </button>
       <button id="btnExport" onclick="exportSanitized()" disabled
         class="px-4 py-2 text-sm rounded-lg bg-accent-green/20 border border-accent-green/30 text-accent-green hover:bg-accent-green/30 transition-all font-medium disabled:opacity-30 disabled:cursor-not-allowed">
         ⬇ Download sanitized file
@@ -637,18 +656,25 @@
         </div>
 
         <!-- Tab: Mapping Table -->
-        <div id="tabMapping" class="tab-content hidden overflow-auto" style="height: 65vh;">
-          <table class="w-full text-sm">
-            <thead class="sticky top-0 bg-surface-300">
-              <tr>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Tag</th>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Original value</th>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Category</th>
-                <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Occurrences</th>
-              </tr>
-            </thead>
-            <tbody id="mappingTableBody" class="divide-y divide-surface-300 font-mono text-xs"></tbody>
-          </table>
+        <div id="tabMapping" class="tab-content hidden flex flex-col" style="height: 65vh;">
+          <div class="px-4 py-2.5 bg-surface-300/50 border-b border-surface-300 flex-shrink-0">
+            <input id="mappingSearch" type="text" placeholder="Filter by tag, value, or category..."
+              oninput="filterMappingTable()"
+              class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-1.5 text-xs text-white placeholder-surface-500 focus:outline-none focus:border-accent-cyan">
+          </div>
+          <div class="flex-1 overflow-auto min-h-0">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-surface-300">
+                <tr>
+                  <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Tag</th>
+                  <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Original value</th>
+                  <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Category</th>
+                  <th class="text-left px-4 py-2.5 text-xs uppercase tracking-wider text-surface-600 font-medium">Occurrences</th>
+                </tr>
+              </thead>
+              <tbody id="mappingTableBody" class="divide-y divide-surface-300 font-mono text-xs"></tbody>
+            </table>
+          </div>
         </div>
 
       </div>
@@ -822,10 +848,11 @@
       priority: 20,
       regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
       // Filters false positives like version numbers (1.2.3.4)
-      validator: (match, context) => {
+      validator: (match, context, matchIndex) => {
         // Exclude if preceded by "version", "v", or "=" immediately before
-        const beforeIdx = context.lastIndexOf('\n', context.indexOf(match)) + 1;
-        const lineBefore = context.substring(beforeIdx, context.indexOf(match)).toLowerCase();
+        const pos = matchIndex != null ? matchIndex : context.indexOf(match);
+        const beforeIdx = context.lastIndexOf('\n', pos) + 1;
+        const lineBefore = context.substring(beforeIdx, pos).toLowerCase();
         if (/(?:version|ver\.?|v)\s*$/.test(lineBefore)) return false;
         return true;
       }
@@ -1245,7 +1272,7 @@
           }
 
           // Optional validation (filters false positives)
-          if (rule.validator && !rule.validator(value, text)) {
+          if (rule.validator && !rule.validator(value, text, match.index)) {
             continue;
           }
 
@@ -1354,12 +1381,79 @@
       .replace(/"/g, '&quot;');
   }
 
-  /** Formats text with line numbers */
+  /** Formats text with line numbers (used for small outputs) */
   function formatWithLineNumbers(html) {
     const lines = html.split('\n');
     return lines.map((line, i) =>
       `<span class="code-line"><span class="line-num">${i + 1}</span>${line}</span>`
     ).join('\n');
+  }
+
+  // =============================================================
+  // VIRTUAL SCROLLER — renders only visible lines
+  // =============================================================
+  const VIRTUAL_THRESHOLD = 3000; // use virtual rendering above this many lines
+  const LINE_HEIGHT = 20.625;     // 12.5px font * 1.65 line-height
+  const OVERSCAN = 20;            // extra lines rendered above/below viewport
+
+  /**
+   * Sets up a virtual-scrolling code panel.
+   * @param {HTMLElement} container — the panel div
+   * @param {string[]} lines — array of HTML line content (already escaped/highlighted)
+   */
+  function setupVirtualPanel(container, lines) {
+    const totalHeight = lines.length * LINE_HEIGHT;
+    container.innerHTML = '';
+    container.classList.add('virtual-scroller');
+
+    const spacer = document.createElement('div');
+    spacer.className = 'virtual-scroller-spacer';
+    spacer.style.height = totalHeight + 'px';
+
+    const viewport = document.createElement('div');
+    viewport.className = 'virtual-scroller-viewport code-panel';
+    viewport.style.top = '0px';
+
+    container.appendChild(spacer);
+    container.appendChild(viewport);
+
+    let lastStart = -1, lastEnd = -1;
+
+    function render() {
+      const scrollTop = container.scrollTop;
+      const clientHeight = container.clientHeight;
+      const start = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - OVERSCAN);
+      const end = Math.min(lines.length, Math.ceil((scrollTop + clientHeight) / LINE_HEIGHT) + OVERSCAN);
+
+      if (start === lastStart && end === lastEnd) return;
+      lastStart = start;
+      lastEnd = end;
+
+      const fragment = [];
+      for (let i = start; i < end; i++) {
+        fragment.push(`<span class="code-line"><span class="line-num">${i + 1}</span>${lines[i]}</span>`);
+      }
+      viewport.innerHTML = fragment.join('\n');
+      viewport.style.top = (start * LINE_HEIGHT) + 'px';
+    }
+
+    container.addEventListener('scroll', render, { passive: true });
+    // Store render function for external sync-scroll triggering
+    container._virtualRender = render;
+    render();
+  }
+
+  /**
+   * Renders lines into a panel, choosing virtual or DOM based on line count.
+   */
+  function renderPanel(container, htmlLines) {
+    container.classList.remove('virtual-scroller');
+    container._virtualRender = null;
+    if (htmlLines.length > VIRTUAL_THRESHOLD) {
+      setupVirtualPanel(container, htmlLines);
+    } else {
+      container.innerHTML = formatWithLineNumbers(htmlLines.join('\n'));
+    }
   }
 
 
@@ -1402,6 +1496,8 @@
     });
   }
 
+  let _toggleDebounceTimer = null;
+
   function toggleCategory(catId, el) {
     if (disabledCategories.has(catId)) {
       disabledCategories.delete(catId);
@@ -1410,9 +1506,12 @@
       disabledCategories.add(catId);
       el.classList.remove('active');
     }
-    // Re-sanitize if a file is loaded
+    // Debounce re-sanitization so rapid toggles don't re-run for each click
     if (currentOriginalText) {
-      processSanitization(currentOriginalText);
+      clearTimeout(_toggleDebounceTimer);
+      _toggleDebounceTimer = setTimeout(() => {
+        processSanitization(currentOriginalText);
+      }, 300);
     }
   }
 
@@ -1530,6 +1629,21 @@
   function closePasteModal() {
     document.getElementById('pasteModal').classList.add('hidden');
   }
+
+  // --- Global paste: Ctrl+V / Cmd+V opens paste modal and populates it ---
+  document.addEventListener('paste', (e) => {
+    // Skip if the user is already typing in an input/textarea
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text.trim()) return;
+    e.preventDefault();
+    const pasteArea = document.getElementById('pasteArea');
+    pasteArea.value = text;
+    document.getElementById('pasteModal').classList.remove('hidden');
+    pasteArea.focus();
+  });
+
   function processPastedText() {
     const text = document.getElementById('pasteArea').value;
     if (!text.trim()) return;
@@ -1542,8 +1656,11 @@
   }
 
   // --- Main processing ---
+  let _processingId = 0; // guards against stale async completions
+
   function processSanitization(text) {
     const profile = document.getElementById('profileSelect').value;
+    const myId = ++_processingId;
 
     // Show the progress bar
     const progressBar = document.getElementById('progressBar');
@@ -1551,25 +1668,44 @@
     const progressPercent = document.getElementById('progressPercent');
     progressBar.classList.remove('hidden');
 
-    // Run processing asynchronously to avoid blocking the UI
-    requestAnimationFrame(() => {
-      const { sanitized, highlighted } = engine.sanitize(
-        text, profile, disabledCategories,
-        (pct) => {
-          progressFill.style.width = pct + '%';
-          progressPercent.textContent = pct + '%';
+    // For large files (>500 KB), yield to the browser between phases
+    // using setTimeout so the UI stays responsive.
+    const isLarge = text.length > 512 * 1024;
+
+    function runEngine() {
+      return new Promise(resolve => {
+        if (isLarge) {
+          // Yield once before heavy work so the progress bar paints
+          setTimeout(() => {
+            const result = engine.sanitize(text, profile, disabledCategories, (pct) => {
+              progressFill.style.width = pct + '%';
+              progressPercent.textContent = pct + '%';
+            });
+            resolve(result);
+          }, 0);
+        } else {
+          const result = engine.sanitize(text, profile, disabledCategories, (pct) => {
+            progressFill.style.width = pct + '%';
+            progressPercent.textContent = pct + '%';
+          });
+          resolve(result);
         }
-      );
+      });
+    }
+
+    function renderResults({ sanitized, highlighted }) {
+      // Guard: if a newer run started, discard this one
+      if (myId !== _processingId) return;
 
       currentSanitizedText = sanitized;
 
-      // Update panels
-      const originalHtml = formatWithLineNumbers(escapeHtml(text));
-      const sanitizedHtml = formatWithLineNumbers(highlighted);
+      // Split into line arrays for the virtual scroller
+      const originalLines = escapeHtml(text).split('\n');
+      const sanitizedLines = highlighted.split('\n');
 
-      document.getElementById('panelOriginal').innerHTML = originalHtml;
-      document.getElementById('panelSanitized').innerHTML = sanitizedHtml;
-      document.getElementById('panelSanitizedFull').innerHTML = sanitizedHtml;
+      renderPanel(document.getElementById('panelOriginal'), originalLines);
+      renderPanel(document.getElementById('panelSanitized'), sanitizedLines);
+      renderPanel(document.getElementById('panelSanitizedFull'), sanitizedLines);
 
       // Update stats
       updateStats(engine.getStats());
@@ -1582,9 +1718,15 @@
       // Enable export buttons
       document.getElementById('btnExport').disabled = false;
       document.getElementById('btnExportMapping').disabled = false;
+      document.getElementById('btnCopy').disabled = false;
 
       // Hide progress after a short delay
       setTimeout(() => { progressBar.classList.add('hidden'); }, 800);
+    }
+
+    // Kick off: yield a frame for the progress bar, then run
+    requestAnimationFrame(() => {
+      runEngine().then(renderResults);
     });
   }
 
@@ -1599,6 +1741,8 @@
       syncing = true;
       sanitized.scrollTop = original.scrollTop;
       sanitized.scrollLeft = original.scrollLeft;
+      // Trigger virtual re-render on the paired panel if active
+      if (sanitized._virtualRender) sanitized._virtualRender();
       requestAnimationFrame(() => { syncing = false; });
     });
 
@@ -1607,6 +1751,7 @@
       syncing = true;
       original.scrollTop = sanitized.scrollTop;
       original.scrollLeft = sanitized.scrollLeft;
+      if (original._virtualRender) original._virtualRender();
       requestAnimationFrame(() => { syncing = false; });
     });
   }
@@ -1639,11 +1784,32 @@
   }
 
   // --- Mapping table ---
+  let _currentMappingTable = [];
+
   function updateMappingTable(table) {
+    _currentMappingTable = table;
+    // Clear search when new data arrives
+    const searchInput = document.getElementById('mappingSearch');
+    if (searchInput) searchInput.value = '';
+    renderMappingRows(table);
+  }
+
+  function filterMappingTable() {
+    const query = (document.getElementById('mappingSearch')?.value || '').toLowerCase().trim();
+    if (!query) { renderMappingRows(_currentMappingTable); return; }
+    const filtered = _currentMappingTable.filter(e =>
+      e.tag.toLowerCase().includes(query) ||
+      e.original.toLowerCase().includes(query) ||
+      e.category.toLowerCase().includes(query)
+    );
+    renderMappingRows(filtered);
+  }
+
+  function renderMappingRows(table) {
     const tbody = document.getElementById('mappingTableBody');
     tbody.innerHTML = '';
     if (table.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-surface-500">No mappings generated</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-surface-500">No mappings found</td></tr>';
       return;
     }
     table.forEach(entry => {
@@ -1705,6 +1871,17 @@
     URL.revokeObjectURL(url);
   }
 
+  // --- Copy sanitized text to clipboard ---
+  function copySanitized() {
+    if (!currentSanitizedText) return;
+    const btn = document.getElementById('btnCopy');
+    navigator.clipboard.writeText(currentSanitizedText).then(() => {
+      const prev = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = prev; }, 1500);
+    });
+  }
+
   // --- Full reset ---
   function resetAll() {
     engine.reset();
@@ -1716,10 +1893,14 @@
     document.getElementById('progressBar').classList.add('hidden');
     document.getElementById('btnExport').disabled = true;
     document.getElementById('btnExportMapping').disabled = true;
+    document.getElementById('btnCopy').disabled = true;
     document.getElementById('fileInfo').textContent = '';
-    document.getElementById('panelOriginal').innerHTML = '';
-    document.getElementById('panelSanitized').innerHTML = '';
-    document.getElementById('panelSanitizedFull').innerHTML = '';
+    ['panelOriginal', 'panelSanitized', 'panelSanitizedFull'].forEach(id => {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      el.classList.remove('virtual-scroller');
+      el._virtualRender = null;
+    });
     document.getElementById('pasteArea').value = '';
     fileInput.value = '';
     // Re-enable all categories
@@ -1778,9 +1959,9 @@
       rules.forEach(r => {
         const isCustom = !!r.custom;
         const active = _editingRuleId === r.id;
-        html += `<button onclick="selectRuleInManager('${r.id}')"
+        html += `<button onclick="selectRuleInManager('${escapeHtml(r.id)}')"
           class="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
-          <span class="flex-1 truncate">${r.name}</span>
+          <span class="flex-1 truncate">${escapeHtml(r.name)}</span>
           <span class="text-[10px] leading-none ${isCustom ? 'text-accent-cyan' : 'text-surface-500'}">${isCustom ? '✎' : '🔒'}</span>
         </button>`;
       });
@@ -1876,8 +2057,8 @@
             ${getAllProfiles().map(p => {
               const checked = rule.profileIds && rule.profileIds.includes(p.id);
               return `<label class="flex items-center gap-2 ${readOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-white'} transition-colors">
-                <input type="checkbox" name="rule_profileIds" value="${p.id}" ${checked ? 'checked' : ''} ${dis} class="w-3.5 h-3.5 rounded">
-                <span class="text-xs text-surface-600">${p.icon} ${p.name}</span>
+                <input type="checkbox" name="rule_profileIds" value="${escapeHtml(p.id)}" ${checked ? 'checked' : ''} ${dis} class="w-3.5 h-3.5 rounded">
+                <span class="text-xs text-surface-600">${escapeHtml(p.icon)} ${escapeHtml(p.name)}</span>
               </label>`;
             }).join('')}
           </div>
@@ -2099,10 +2280,10 @@
     } else {
       custom.forEach(p => {
         const active = _editingProfileId === p.id;
-        html += `<button onclick="selectProfileInManager('${p.id}', false)"
+        html += `<button onclick="selectProfileInManager('${escapeHtml(p.id)}', false)"
           class="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
-          <span class="text-base leading-none">${p.icon}</span>
-          <span class="flex-1 truncate">${p.name}</span>
+          <span class="text-base leading-none">${escapeHtml(p.icon)}</span>
+          <span class="flex-1 truncate">${escapeHtml(p.name)}</span>
         </button>`;
       });
     }
@@ -2142,7 +2323,7 @@
         <div class="grid grid-cols-4 gap-3">
           <div>
             <label class="block text-xs text-surface-500 uppercase tracking-wider mb-1.5">Icon</label>
-            <input id="edit_icon" type="text" value="${profile.icon}" ${dis} maxlength="4"
+            <input id="edit_icon" type="text" value="${escapeHtml(profile.icon)}" ${dis} maxlength="4"
               class="w-full bg-surface-300 border border-surface-400 rounded-lg px-3 py-2 text-center text-lg focus:outline-none focus:border-accent-cyan ${dimmed}">
           </div>
           <div class="col-span-3">
@@ -2275,6 +2456,18 @@
     document.getElementById('profileEditorPanel').innerHTML =
       '<p class="text-surface-500 text-sm text-center mt-12">Profile deleted.</p>';
   }
+
+  // --- Close modals on Escape key ---
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const pasteModal = document.getElementById('pasteModal');
+      const profileModal = document.getElementById('profileManagerModal');
+      const rulesModal = document.getElementById('rulesManagerModal');
+      if (!pasteModal.classList.contains('hidden')) { closePasteModal(); return; }
+      if (!rulesModal.classList.contains('hidden')) { closeRulesManager(); return; }
+      if (!profileModal.classList.contains('hidden')) { closeProfileManager(); return; }
+    }
+  });
 
   // --- Initialization ---
   initProfileSelect();
