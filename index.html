@@ -488,7 +488,7 @@
         </svg>
         <div>
           <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogSanitizer</h1>
-          <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer</p>
+          <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer <span id="appVersion"></span></p>
         </div>
       </div>
       <div class="flex items-center gap-4">
@@ -816,6 +816,8 @@
        JAVASCRIPT — SANITIZATION ENGINE
        ======================================================== -->
   <script>
+  const APP_VERSION = '1.0.0';
+
   /**
    * =============================================================
    * LOGSANITIZER — ZERO-SERVER SANITIZATION ENGINE
@@ -887,6 +889,8 @@
   // Shared (server-managed) data — populated by loadSharedData()
   let RULES_DICTIONARY = [];
   let PROFILES_REGISTRY = [];
+  let CUSTOM_PROFILES = [];
+  let CUSTOM_RULES = [];
   let _sharedDataReady = false;
 
   /**
@@ -902,13 +906,17 @@
       } catch { return []; }
     };
 
-    const [rawRules, rawProfiles] = await Promise.all([
+    const [rawRules, rawProfiles, rawCustomProfiles, rawCustomRules] = await Promise.all([
       fetchJSON('data/shared-rules.json'),
       fetchJSON('data/shared-profiles.json'),
+      fetchJSON('data/custom-profiles.json'),
+      fetchJSON('data/custom-rules.json'),
     ]);
 
     RULES_DICTIONARY = rawRules.map(hydrateRule);
     PROFILES_REGISTRY = rawProfiles;
+    CUSTOM_PROFILES = Array.isArray(rawCustomProfiles) ? rawCustomProfiles : [];
+    CUSTOM_RULES = Array.isArray(rawCustomRules) ? rawCustomRules : [];
     _sharedDataReady = true;
   }
 
@@ -1267,12 +1275,16 @@
   // =============================================================
 
   function loadCustomRules() {
-    try { return JSON.parse(localStorage.getItem('logsanitizer_rules') || '[]'); }
-    catch { return []; }
+    return CUSTOM_RULES;
   }
 
   function saveCustomRules(rules) {
-    localStorage.setItem('logsanitizer_rules', JSON.stringify(rules));
+    CUSTOM_RULES = rules;
+    return fetch('api/rules.py', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rules),
+    }).catch(e => console.warn('Failed to save rules to server:', e));
   }
 
   // Returns built-in rules merged with user-created ones.
@@ -1288,12 +1300,16 @@
   }
 
   function loadCustomProfiles() {
-    try { return JSON.parse(localStorage.getItem('logsanitizer_profiles') || '[]'); }
-    catch { return []; }
+    return CUSTOM_PROFILES;
   }
 
   function saveCustomProfiles(profiles) {
-    localStorage.setItem('logsanitizer_profiles', JSON.stringify(profiles));
+    CUSTOM_PROFILES = profiles;
+    return fetch('api/profiles.py', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profiles),
+    }).catch(e => console.warn('Failed to save profiles to server:', e));
   }
 
   // Returns built-in profiles merged with user-created ones
@@ -2310,6 +2326,7 @@
   // Load shared data from server, then initialize UI.
   // Falls back gracefully if JSON files are unavailable.
   (async () => {
+    document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
     await loadSharedData();
     initProfileSelect();
     initCategoryToggles();

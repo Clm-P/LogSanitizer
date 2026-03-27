@@ -1,0 +1,16 @@
+[
+  {
+    "id": "custom_rule_1774615086923",
+    "name": "Session IDs (copy)",
+    "category": "key",
+    "prefix": "SESSION",
+    "priority": 49,
+    "regexPattern": "(?:session[_-]?id|jsessionid|phpsessid|sid|sess)[\\s]*[=:]\\s*[\"']?([a-zA-Z0-9\\-_.~+\\/]{8,})[\"']?",
+    "regexFlags": "gi",
+    "extractGroup": true,
+    "profileIds": [
+      "custom_1774615052143"
+    ],
+    "custom": true
+  }
+]
