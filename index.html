@@ -488,7 +488,7 @@
         </svg>
         <div>
           <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogSanitizer</h1>
-          <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer <span id="appVersion"></span></p>
+          <p class="text-[10px] text-surface-600 tracking-widest uppercase"><span id="appVersion"></span></p>
         </div>
       </div>
       <div class="flex items-center gap-4">
@@ -505,6 +505,12 @@
        MAIN CONTENT
        ======================================================== -->
   <main class="max-w-[1600px] mx-auto px-6 py-6">
+
+    <!-- DISCLAIMER -->
+    <div class="flex items-start gap-3 pl-4 pr-3 py-2.5 mb-6 border-l-2 border-yellow-600/50 text-yellow-400/70 text-xs animate-in" style="animation-delay: 0.05s">
+      <span class="text-sm leading-none mt-0.5 shrink-0">⚠️</span>
+      <span><strong class="font-semibold text-yellow-400/90">Disclaimer:</strong> This tool is regex-based and cannot guarantee complete sanitization. Sensitive data in unexpected formats may not be detected. Always review the output before sharing.</span>
+    </div>
 
     <!-- CONTROL BAR -->
     <div class="flex flex-wrap items-center gap-4 mb-6 animate-in" style="animation-delay: 0.1s">

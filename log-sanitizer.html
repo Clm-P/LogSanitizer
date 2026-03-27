@@ -488,7 +488,7 @@
         </svg>
         <div>
           <h1 class="text-lg font-semibold text-white tracking-tight font-body">LogSanitizer</h1>
-          <p class="text-[10px] text-surface-600 tracking-widest uppercase">Zero-Server Sanitizer <span id="appVersion"></span></p>
+          <p class="text-[10px] text-surface-600 tracking-widest uppercase"><span id="appVersion"></span></p>
         </div>
       </div>
       <div class="flex items-center gap-4">
@@ -505,6 +505,12 @@
        MAIN CONTENT
        ======================================================== -->
   <main class="max-w-[1600px] mx-auto px-6 py-6">
+
+    <!-- DISCLAIMER -->
+    <div class="flex items-start gap-3 pl-4 pr-3 py-2.5 mb-6 border-l-2 border-yellow-600/50 text-yellow-400/70 text-xs animate-in" style="animation-delay: 0.05s">
+      <span class="text-sm leading-none mt-0.5 shrink-0">⚠️</span>
+      <span><strong class="font-semibold text-yellow-400/90">Disclaimer:</strong> This tool is regex-based and cannot guarantee complete sanitization. Sensitive data in unexpected formats may not be detected. Always review the output before sharing.</span>
+    </div>
 
     <!-- CONTROL BAR -->
     <div class="flex flex-wrap items-center gap-4 mb-6 animate-in" style="animation-delay: 0.1s">
@@ -956,6 +962,48 @@
       priority: 43,
       regex: /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g,
     },
+
+    // --- CRYPTOGRAPHIC HASHES ---
+    {
+      id: 'hash_context',
+      name: 'Hashes (labeled)',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'HASH',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 44,
+      // Catches hash values preceded by an algorithm/keyword label: sha256=, md5:, fingerprint:, etc.
+      regex: /(?:sha(?:1|224|256|384|512|3(?:-256|-512)?)?|md5|ntlm|lm|ripemd(?:-160)?|blake2[bs]?|checksum|hash|digest|fingerprint)\s*[=:]\s*([a-fA-F0-9]{32,128})/gi,
+      extractMatch: (fullMatch, groups) => groups[0] || fullMatch,
+    },
+    {
+      id: 'hash_standalone',
+      name: 'Hashes (MD5/SHA1/SHA256/SHA512)',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'HASH',
+      profiles: ['standard', 'applicatif', 'cloud'],
+      priority: 44,
+      // Exact hex lengths for known algorithms: MD5(32), SHA1(40), SHA224(56), SHA256(64), SHA384(96), SHA512(128)
+      regex: /\b(?:[a-fA-F0-9]{128}|[a-fA-F0-9]{96}|[a-fA-F0-9]{64}|[a-fA-F0-9]{56}|[a-fA-F0-9]{40}|[a-fA-F0-9]{32})\b/g,
+      validator: (match) => {
+        if (/^[0-9]+$/.test(match)) return false;
+        const unique = new Set(match.toLowerCase()).size;
+        return unique >= 6;
+      },
+    },
+    {
+      id: 'hash_crypt',
+      name: 'Password Hashes (bcrypt/argon2/sha-crypt)',
+      category: 'key',
+      cssClass: 'san-key',
+      prefix: 'HASH',
+      profiles: ['standard', 'applicatif'],
+      priority: 44,
+      // Unix crypt formats: bcrypt ($2b$), SHA-256 crypt ($5$), SHA-512 crypt ($6$), argon2, scrypt
+      regex: /\$(?:2[aby]|5|6|argon2(?:i|d|id)?|scrypt)\$[^\s"'\n\r]{20,}/g,
+    },
+
     {
       id: 'session_id',
       name: 'Session IDs',

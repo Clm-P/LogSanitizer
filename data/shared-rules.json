@@ -64,6 +64,35 @@
     "regexFlags": "g"
   },
   {
+    "id": "hash_context",
+    "name": "Hashes (labeled)",
+    "category": "key",
+    "prefix": "HASH",
+    "priority": 44,
+    "regexPattern": "(?:sha(?:1|224|256|384|512|3(?:-256|-512)?)?|md5|ntlm|lm|ripemd(?:-160)?|blake2[bs]?|checksum|hash|digest|fingerprint)\\s*[=:]\\s*([a-fA-F0-9]{32,128})",
+    "regexFlags": "gi",
+    "extractGroup": true
+  },
+  {
+    "id": "hash_standalone",
+    "name": "Hashes (MD5/SHA1/SHA256/SHA512)",
+    "category": "key",
+    "prefix": "HASH",
+    "priority": 44,
+    "regexPattern": "\\b(?:[a-fA-F0-9]{128}|[a-fA-F0-9]{96}|[a-fA-F0-9]{64}|[a-fA-F0-9]{56}|[a-fA-F0-9]{40}|[a-fA-F0-9]{32})\\b",
+    "regexFlags": "g",
+    "validatorId": "hex_entropy_filter"
+  },
+  {
+    "id": "hash_crypt",
+    "name": "Password Hashes (bcrypt/argon2/sha-crypt)",
+    "category": "key",
+    "prefix": "HASH",
+    "priority": 44,
+    "regexPattern": "\\$(?:2[aby]|5|6|argon2(?:i|d|id)?|scrypt)\\$[^\\s\"'\\n\\r]{20,}",
+    "regexFlags": "g"
+  },
+  {
     "id": "generic_api_key",
     "name": "Generic API Keys",
     "category": "key",
