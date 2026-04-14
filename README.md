@@ -97,6 +97,75 @@ Custom profiles can be created in the UI and exported/imported as JSON.
 
 Serve `index.html` from Apache. Rules and profiles are loaded from `data/shared-rules.json` and `data/shared-profiles.json`.
 
+For a full deployment walkthrough (Apache setup, SSL, SELinux, firewall) see [docs/DEPLOY.md](docs/DEPLOY.md).
+
+---
+
+## Deployment (quick start)
+
+### RHEL / CentOS
+
+```bash
+sudo dnf install -y httpd mod_ssl python3
+sudo mkdir -p /var/www/logsanitizer/{data,api}
+sudo cp index.html data/*.json /var/www/logsanitizer/data/ api/*.py /var/www/logsanitizer/api/  # adjust paths
+sudo chown -R apache:apache /var/www/logsanitizer/
+sudo chmod 755 /var/www/logsanitizer/api/*.py
+sudo chmod 664 /var/www/logsanitizer/data/custom-*.json
+
+# SELinux contexts
+sudo semanage fcontext -a -t httpd_sys_script_exec_t "/var/www/logsanitizer/api(/.*)?"
+sudo semanage fcontext -a -t httpd_sys_rw_content_t  "/var/www/logsanitizer/data(/.*)?"
+sudo restorecon -Rv /var/www/logsanitizer/
+
+sudo firewall-cmd --permanent --add-service=https && sudo firewall-cmd --reload
+sudo systemctl enable --now httpd
+```
+
+### Debian / Ubuntu
+
+```bash
+sudo apt install -y apache2 python3
+sudo a2enmod ssl cgid headers
+sudo mkdir -p /var/www/logsanitizer/{data,api}
+sudo cp index.html /var/www/logsanitizer/
+sudo cp data/*.json /var/www/logsanitizer/data/
+sudo cp api/*.py   /var/www/logsanitizer/api/
+sudo chown -R www-data:www-data /var/www/logsanitizer/
+sudo chmod 755 /var/www/logsanitizer/api/*.py
+sudo chmod 664 /var/www/logsanitizer/data/custom-*.json
+
+sudo ufw allow 443/tcp && sudo ufw reload
+sudo systemctl reload apache2
+```
+
+### Apache vhost (both)
+
+Place in `/etc/httpd/conf.d/logsanitizer.conf` (RHEL) or `/etc/apache2/sites-available/logsanitizer.conf` (Debian/Ubuntu):
+
+```apache
+<VirtualHost *:443>
+    ServerName logsanitizer.corp.internal
+    DocumentRoot /var/www/logsanitizer
+    SSLEngine on
+    SSLCertificateFile    /etc/pki/tls/certs/logsanitizer.crt
+    SSLCertificateKeyFile /etc/pki/tls/private/logsanitizer.key
+    <Directory /var/www/logsanitizer>
+        Options -Indexes
+        Require all granted
+    </Directory>
+    <Directory /var/www/logsanitizer/api>
+        Options +ExecCGI
+        AddHandler cgi-script .py
+    </Directory>
+    <LocationMatch "^/data/.*\.json$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </LocationMatch>
+</VirtualHost>
+```
+
+> For a complete guide including SSL setup and verification steps, see [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ---
 
 ## Extending
