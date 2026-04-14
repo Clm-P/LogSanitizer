@@ -13,7 +13,7 @@ Designed for air-gapped environments and the processing of confidential logs.
 
 - **Drag & drop** or **paste** text — supports `.txt`, `.log`, `.json`, `.csv`, `.xml`, `.yaml`
 - **30 built-in detection rules** across 7 categories (see below)
-- **5 sanitization profiles** — Standard, Network, Application, Cloud, Tenable/Nessus
+- **4 sanitization profiles** — Standard, Network, Application, Cloud
 - **Consistent anonymization** — the same value always maps to the same tag throughout the file
 - **Side-by-side diff view** with color-coded highlights
 - **Export** sanitized file + JSON mapping table
@@ -88,7 +88,6 @@ Designed for air-gapped environments and the processing of confidential logs.
 | **Network** | `ip`, `hostname` |
 | **Application** | `user`, `path`, `key`, `email` |
 | **Cloud** | `key`, `hostname`, `ip`, `email` |
-| **Tenable / Nessus** | `ip`, `key`, `user`, `hostname`, `cred` |
 
 Custom profiles can be created in the UI and exported/imported as JSON.
 

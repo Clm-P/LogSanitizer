@@ -26,12 +26,5 @@
     "icon": "\u2601\ufe0f",
     "description": "API keys, ARNs, cloud endpoints",
     "categories": ["key", "hostname", "ip", "email"]
-  },
-  {
-    "id": "tenable",
-    "name": "Tenable / Nessus",
-    "icon": "\ud83d\udd2c",
-    "description": "SecurityCenter & Nessus Scanner",
-    "categories": ["ip", "key", "user", "hostname", "cred"]
   }
 ]
