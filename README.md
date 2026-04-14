@@ -3,6 +3,8 @@
 A **100% local** web application for log sanitization — no backend, no network connection, no data leaves your machine.
 Designed for air-gapped environments and the processing of confidential logs.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/clmp63756)
+
 > **Disclaimer:** This tool is regex-based and cannot guarantee complete sanitization. Sensitive data in unexpected formats may not be detected. Always review the output before sharing.
 
 <img width="3795" height="1323" alt="image" src="https://github.com/user-attachments/assets/04638733-dae9-40e9-bf93-64df7ceea81c" />
