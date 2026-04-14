@@ -9,19 +9,10 @@ Designed for air-gapped environments and the processing of confidential logs.
 
 ---
 
-## Two variants
-
-| File | Use case | Dependencies |
-|---|---|---|
-| `log-sanitizer.html` | Portable / offline | Tailwind CSS via CDN (one-time load) |
-| `index.html` | Served by Apache (CentOS 9, HTTPS port 443) | Fully self-contained, no CDN |
-
----
-
 ## Features
 
 - **Drag & drop** or **paste** text — supports `.txt`, `.log`, `.json`, `.csv`, `.xml`, `.yaml`
-- **25 built-in detection rules** across 7 categories (see below)
+- **30 built-in detection rules** across 7 categories (see below)
 - **5 sanitization profiles** — Standard, Network, Application, Cloud, Tenable/Nessus
 - **Consistent anonymization** — the same value always maps to the same tag throughout the file
 - **Side-by-side diff view** with color-coded highlights
@@ -32,7 +23,7 @@ Designed for air-gapped environments and the processing of confidential logs.
 
 ---
 
-## Detection rules (25 built-in)
+## Detection rules (30 built-in)
 
 ### IP / Network (`ip`)
 | Rule | Example detected |
@@ -105,16 +96,14 @@ Custom profiles can be created in the UI and exported/imported as JSON.
 
 ## Usage
 
-Open `log-sanitizer.html` in a browser — no installation required.
-
-For the deployed version (`index.html`), serve from Apache. The server version loads shared rules and profiles from `data/shared-rules.json` and `data/shared-profiles.json`.
+Serve `index.html` from Apache. Rules and profiles are loaded from `data/shared-rules.json` and `data/shared-profiles.json`.
 
 ---
 
 ## Extending
 
 ### Adding a detection rule
-Add an object to `RULES_DICTIONARY` in `log-sanitizer.html`:
+Add an entry to `data/shared-rules.json`:
 ```js
 {
   id: 'my_rule',          // unique string
@@ -130,10 +119,8 @@ Add an object to `RULES_DICTIONARY` in `log-sanitizer.html`:
 }
 ```
 
-For the server version, add the equivalent entry to `data/shared-rules.json`.
-
 ### Adding a profile
-Add an object to `PROFILES_REGISTRY` in `log-sanitizer.html`:
+Add an entry to `data/shared-profiles.json`:
 ```js
 {
   id: 'splunk',
@@ -148,7 +135,7 @@ Add an object to `PROFILES_REGISTRY` in `log-sanitizer.html`:
 
 ## Versioning
 
-Version is set via `APP_VERSION` in both `index.html` and `log-sanitizer.html`.
+Version is set via `APP_VERSION` in `index.html`.
 
 ```
 MAJOR — breaking changes (e.g. data format change)
@@ -157,7 +144,7 @@ PATCH — bug fixes
 ```
 
 Release process:
-1. Update `APP_VERSION = '1.x.x'` in both HTML files
+1. Update `APP_VERSION = '1.x.x'` in `index.html`
 2. `git commit -m "feat: release v1.x.x"`
 3. `git tag v1.x.x`
 
@@ -165,7 +152,7 @@ Release process:
 
 ## Architecture
 
-- Single-file SPA — everything in one `.html` file (portable version)
+- Single-file SPA — everything in `index.html`
 - Zero NPM dependencies — Vanilla JS only
-- Tailwind CSS via CDN Play (portable) or inlined utility classes (deployed)
+- Tailwind CSS utility classes inlined (no CDN)
 - Offline compatible — no external runtime dependencies
