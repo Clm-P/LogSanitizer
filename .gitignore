@@ -7,3 +7,10 @@ Thumbs.db
 .idea/
 test-logs/
 *.log
+
+# Runtime server data (written by Apache/CGI, not source)
+data/custom-*.json
+
+# Claude Code session data
+.claude/
+CLAUDE.md

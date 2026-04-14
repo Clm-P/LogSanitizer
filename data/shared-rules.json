@@ -14,8 +14,9 @@
     "category": "ip",
     "prefix": "IP",
     "priority": 20,
-    "regexPattern": "\\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\b",
+    "regexPattern": "\\b((?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?))(?::\\d{1,5})?\\b",
     "regexFlags": "g",
+    "extractGroup": true,
     "validatorId": "ipv4_version_filter"
   },
   {
@@ -234,5 +235,52 @@
     "regexPattern": "(?:NetBIOS\\s+(?:Computer\\s+)?[Nn]ame|DNS\\s+[Nn]ame|[Cc]ommon\\s+[Nn]ame|[Hh]ostname)\\s*:\\s*([^\\s,\\n\\r]+)",
     "regexFlags": "g",
     "extractGroup": true
+  },
+  {
+    "id": "pem_private_key",
+    "name": "PEM Private Keys",
+    "category": "key",
+    "prefix": "PRIVKEY",
+    "priority": 37,
+    "regexPattern": "-----BEGIN (?:RSA |EC |DSA |ECDSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----[\\s\\S]*?-----END (?:RSA |EC |DSA |ECDSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----",
+    "regexFlags": "g"
+  },
+  {
+    "id": "credit_card",
+    "name": "Credit Card Numbers",
+    "category": "key",
+    "prefix": "CC",
+    "priority": 39,
+    "regexPattern": "\\b(?:\\d{4}[\\s\\-]?){3}\\d{1,7}\\b",
+    "regexFlags": "g",
+    "validatorId": "credit_card_luhn"
+  },
+  {
+    "id": "db_connection_string",
+    "name": "Database Connection Strings",
+    "category": "cred",
+    "prefix": "DBCONN",
+    "priority": 52,
+    "regexPattern": "(?:postgresql|postgres|mysql|mongodb(?:\\+srv)?|mssql|sqlserver|oracle|redis|mariadb|cassandra|amqp|rabbitmq):\\/\\/[^\\s\"'<>)}\\]]+",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "ldap_dn",
+    "name": "LDAP Distinguished Names",
+    "category": "user",
+    "prefix": "LDAP_DN",
+    "priority": 72,
+    "regexPattern": "(?:CN|UID)=[^,\\n\\r\"']+(?:,\\s*(?:CN|OU|DC|O|L|ST|C|UID)=[^,\\n\\r\"']+){2,}",
+    "regexFlags": "gi"
+  },
+  {
+    "id": "phone_number",
+    "name": "Phone Numbers",
+    "category": "user",
+    "prefix": "PHONE",
+    "priority": 73,
+    "regexPattern": "(?<!\\d)(?:\\+\\d{1,3}[\\s\\-.]?)?(?:\\(\\d{2,4}\\)|\\d{2,4})[\\s\\-.]?\\d{3,4}[\\s\\-.]?\\d{4}(?!\\d)",
+    "regexFlags": "g",
+    "validatorId": "phone_digit_count"
   }
 ]
