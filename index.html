@@ -1442,6 +1442,29 @@
     }
   }
 
+  // Toggle a rule from the rule editor panel (Manage Rules view).
+  // This allows disabling a shared/read-only rule without editing its regex.
+  function toggleRuleFromEditor(ruleId, catId, el) {
+    if (disabledRules.has(ruleId)) {
+      disabledRules.delete(ruleId);
+      el.classList.add('active');
+    } else {
+      disabledRules.add(ruleId);
+      el.classList.remove('active');
+    }
+    // Update the status label next to the toggle
+    const label = el.nextElementSibling;
+    if (label) {
+      const enabled = !disabledRules.has(ruleId);
+      label.className = `text-xs ${enabled ? 'text-accent-green' : 'text-surface-500'}`;
+      label.textContent = enabled ? 'Active — this rule will sanitize matches' : 'Disabled — this rule is skipped';
+    }
+    // Sync the category bar toggles and rule list visual state
+    initCategoryToggles();
+    renderRulesList();
+    _debounceSanitize();
+  }
+
   // =============================================================
   // PROFILE PERSISTENCE — localStorage helpers
   // =============================================================
@@ -1838,8 +1861,9 @@
     });
     document.getElementById('pasteArea').value = '';
     fileInput.value = '';
-    // Re-enable all categories
+    // Re-enable all categories and rules
     disabledCategories.clear();
+    disabledRules.clear();
     initCategoryToggles();
   }
 
@@ -1894,9 +1918,11 @@
       rules.forEach(r => {
         const isCustom = !!r.custom;
         const active = _editingRuleId === r.id;
+        const ruleOff = disabledRules.has(r.id) || disabledCategories.has(r.category);
         html += `<button onclick="selectRuleInManager('${escapeHtml(r.id)}')"
-          class="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'}">
+          class="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${active ? 'bg-surface-300/70 text-white' : 'text-surface-600 hover:bg-surface-300/40 hover:text-white'} ${ruleOff ? 'opacity-40' : ''}">
           <span class="flex-1 truncate">${escapeHtml(r.name)}</span>
+          ${ruleOff ? '<span class="text-[10px] leading-none text-yellow-500" title="Disabled for this session">⊘</span>' : ''}
           <span class="text-[10px] leading-none ${isCustom ? 'text-accent-cyan' : 'text-surface-500'}">${isCustom ? '✎' : '🔒'}</span>
         </button>`;
       });
@@ -1926,10 +1952,25 @@
       `<option value="${id}" ${rule.category === id ? 'selected' : ''}>${cat.label}</option>`
     ).join('');
 
+    // Per-rule active/inactive toggle — works even on shared (read-only) rules.
+    const ruleEnabled = !disabledRules.has(rule.id);
+
     panel.innerHTML = `
       <div class="p-6 space-y-4">
+        <!-- Active/Inactive toggle — always available, even for shared rules -->
+        <div class="flex items-center justify-between gap-3 bg-surface-300/30 rounded-lg px-3 py-2">
+          <div class="flex items-center gap-2">
+            <div class="toggle-track ${ruleEnabled ? 'active' : ''}" data-rule-editor="${rule.id}"
+                 onclick="toggleRuleFromEditor('${escapeHtml(rule.id)}', '${escapeHtml(rule.category)}', this)">
+              <div class="toggle-knob"></div>
+            </div>
+            <span class="text-xs ${ruleEnabled ? 'text-accent-green' : 'text-surface-500'}">
+              ${ruleEnabled ? 'Active — this rule will sanitize matches' : 'Disabled — this rule is skipped'}
+            </span>
+          </div>
+        </div>
         ${readOnly ? `<div class="flex items-center gap-2 text-xs text-surface-500 bg-surface-300/40 rounded-lg px-3 py-2">
-          <span>🔒</span><span>Shared rule — read-only. Click <strong class="text-white">Duplicate & edit</strong> to create a custom variant.</span>
+          <span>🔒</span><span>Shared rule — fields are read-only. Click <strong class="text-white">Duplicate & edit</strong> to create a custom variant.</span>
         </div>` : ''}
 
         <div class="grid grid-cols-3 gap-3">
