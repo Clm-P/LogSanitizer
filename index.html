@@ -422,6 +422,43 @@
     }
     .toggle-track.active .toggle-knob { transform: translateX(16px); }
 
+    /* Small toggle variant for individual rules */
+    .toggle-track-sm {
+      width: 28px; height: 16px; border-radius: 8px;
+      background: #30363d; position: relative;
+      cursor: pointer; transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-track-sm.active { background: #238636; }
+    .toggle-track-sm .toggle-knob {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #c9d1d9; position: absolute;
+      top: 2px; left: 2px; transition: transform 0.2s;
+    }
+    .toggle-track-sm.active .toggle-knob { transform: translateX(12px); }
+
+    /* Category group expand/collapse */
+    .category-group { position: relative; }
+    .category-rules {
+      display: none; position: absolute; top: 100%; left: 0;
+      z-index: 30; min-width: 220px;
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 8px; padding: 6px 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      margin-top: 4px;
+    }
+    .category-group.open .category-rules { display: block; }
+    .category-rules .rule-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; font-size: 0.7rem; color: #8b949e;
+    }
+    .category-rules .rule-row:hover { background: #1c2128; }
+    .category-chevron {
+      transition: transform 0.2s; display: inline-block;
+      font-size: 0.6rem; margin-left: 2px; opacity: 0.5;
+    }
+    .category-group.open .category-chevron { transform: rotate(180deg); }
+
     /* Progress bar */
     .progress-fill {
       height: 100%; border-radius: 2px;
@@ -1002,15 +1039,18 @@
      * @param {Function} onProgress - Progress callback (0-100)
      * @returns {{ sanitized: string, highlighted: string }}
      */
-    sanitize(text, profile, disabledCategories, onProgress) {
+    sanitize(text, profile, disabledCategories, onProgress, disabledRules) {
       this.reset();
       this.stats = {};
 
       // Filter and sort active rules based on the selected profile
+      // Also respects per-rule granular disabling via disabledRules Set
       const profileDef = getAllProfiles().find(p => p.id === profile) || PROFILES_REGISTRY[0];
+      const perRuleDisabled = disabledRules || new Set();
       const activeRules = getAllRules()
         .filter(r => {
           if (disabledCategories.has(r.category)) return false;
+          if (perRuleDisabled.has(r.id)) return false;          // Per-rule granular toggle
           // Custom rules with explicit profile assignments: only active in those profiles
           if (r.profileIds && r.profileIds.length > 0) {
             return r.profileIds.includes(profile);
@@ -1251,26 +1291,84 @@
   };
 
   const disabledCategories = new Set();
+  const disabledRules = new Set();   // Per-rule granular toggle (rule IDs)
 
-  // --- Category toggles initialization ---
+  // --- Category toggles initialization (with per-rule expand) ---
+  // Each category shows a main toggle + a chevron to expand individual rule toggles.
   function initCategoryToggles() {
     const container = document.getElementById('categoryToggles');
     container.innerHTML = '';
+    const allRules = getAllRules();
+
     Object.entries(CATEGORIES).forEach(([catId, cat]) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'flex items-center gap-1.5';
-      wrapper.innerHTML = `
-        <div class="toggle-track active" data-category="${catId}" onclick="toggleCategory('${catId}', this)">
+      // Collect rules belonging to this category
+      const catRules = allRules.filter(r => r.category === catId);
+
+      const group = document.createElement('div');
+      group.className = 'category-group flex items-center gap-1.5';
+      group.dataset.category = catId;
+
+      // Main category toggle
+      const catActive = !disabledCategories.has(catId);
+      group.innerHTML = `
+        <div class="toggle-track ${catActive ? 'active' : ''}" data-category="${catId}"
+             onclick="toggleCategory('${catId}', this)">
           <div class="toggle-knob"></div>
         </div>
-        <span class="text-xs ${cat.color.split(' ')[1]}">${cat.label}</span>
+        <span class="text-xs ${cat.color.split(' ')[1]} cursor-pointer select-none"
+              onclick="toggleCategoryExpand('${catId}')"
+              title="Click to expand individual rules">
+          ${cat.label} <span class="category-chevron">▼</span>
+        </span>
       `;
-      container.appendChild(wrapper);
+
+      // Dropdown with individual rule toggles
+      if (catRules.length > 0) {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'category-rules';
+        catRules.forEach(rule => {
+          const ruleActive = !disabledRules.has(rule.id) && catActive;
+          const row = document.createElement('div');
+          row.className = 'rule-row';
+          row.innerHTML = `
+            <div class="toggle-track-sm ${ruleActive ? 'active' : ''}" data-rule="${rule.id}"
+                 onclick="toggleRule('${rule.id}', '${catId}', this)">
+              <div class="toggle-knob"></div>
+            </div>
+            <span title="${rule.id}">${rule.name}</span>
+          `;
+          dropdown.appendChild(row);
+        });
+        group.appendChild(dropdown);
+      }
+
+      container.appendChild(group);
     });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', closeCategoryDropdowns, true);
+  }
+
+  // Expand / collapse the per-rule dropdown for a category
+  function toggleCategoryExpand(catId) {
+    const group = document.querySelector(`.category-group[data-category="${catId}"]`);
+    if (!group) return;
+    const wasOpen = group.classList.contains('open');
+    // Close all other open groups first
+    document.querySelectorAll('.category-group.open').forEach(g => g.classList.remove('open'));
+    if (!wasOpen) group.classList.add('open');
+  }
+
+  // Close dropdowns when clicking outside any category group
+  function closeCategoryDropdowns(e) {
+    if (!e.target.closest('.category-group')) {
+      document.querySelectorAll('.category-group.open').forEach(g => g.classList.remove('open'));
+    }
   }
 
   let _toggleDebounceTimer = null;
 
+  // Toggle an entire category on/off (also syncs child rule toggles visually)
   function toggleCategory(catId, el) {
     if (disabledCategories.has(catId)) {
       disabledCategories.delete(catId);
@@ -1279,7 +1377,63 @@
       disabledCategories.add(catId);
       el.classList.remove('active');
     }
-    // Debounce re-sanitization so rapid toggles don't re-run for each click
+    // Sync individual rule toggle visuals within this category
+    const group = el.closest('.category-group');
+    if (group) {
+      const catActive = !disabledCategories.has(catId);
+      group.querySelectorAll('.toggle-track-sm').forEach(rt => {
+        const ruleId = rt.dataset.rule;
+        if (catActive && !disabledRules.has(ruleId)) {
+          rt.classList.add('active');
+        } else {
+          rt.classList.remove('active');
+        }
+      });
+    }
+    _debounceSanitize();
+  }
+
+  // Toggle an individual rule on/off
+  function toggleRule(ruleId, catId, el) {
+    // If the whole category is disabled, enable it first so individual rules make sense
+    if (disabledCategories.has(catId)) {
+      disabledCategories.delete(catId);
+      const catTrack = el.closest('.category-group')
+                         .querySelector(`.toggle-track[data-category="${catId}"]`);
+      if (catTrack) catTrack.classList.add('active');
+      // Disable all rules in this category except the one being enabled
+      const allRules = getAllRules().filter(r => r.category === catId);
+      allRules.forEach(r => { if (r.id !== ruleId) disabledRules.add(r.id); });
+      disabledRules.delete(ruleId);
+      // Refresh all rule toggle visuals in this group
+      const group = el.closest('.category-group');
+      group.querySelectorAll('.toggle-track-sm').forEach(rt => {
+        rt.classList.toggle('active', !disabledRules.has(rt.dataset.rule));
+      });
+    } else {
+      // Normal toggle for individual rule
+      if (disabledRules.has(ruleId)) {
+        disabledRules.delete(ruleId);
+        el.classList.add('active');
+      } else {
+        disabledRules.add(ruleId);
+        el.classList.remove('active');
+      }
+      // If all rules in category are now disabled, disable the category toggle visually
+      const catRules = getAllRules().filter(r => r.category === catId);
+      const allDisabled = catRules.every(r => disabledRules.has(r.id));
+      const catTrack = el.closest('.category-group')
+                         .querySelector(`.toggle-track[data-category="${catId}"]`);
+      if (allDisabled && catTrack) {
+        disabledCategories.add(catId);
+        catTrack.classList.remove('active');
+      }
+    }
+    _debounceSanitize();
+  }
+
+  // Shared debounce for re-sanitization after any toggle change
+  function _debounceSanitize() {
     if (currentOriginalText) {
       clearTimeout(_toggleDebounceTimer);
       _toggleDebounceTimer = setTimeout(() => {
@@ -1461,14 +1615,14 @@
             const result = engine.sanitize(text, profile, disabledCategories, (pct) => {
               progressFill.style.width = pct + '%';
               progressPercent.textContent = pct + '%';
-            });
+            }, disabledRules);
             resolve(result);
           }, 0);
         } else {
           const result = engine.sanitize(text, profile, disabledCategories, (pct) => {
             progressFill.style.width = pct + '%';
             progressPercent.textContent = pct + '%';
-          });
+          }, disabledRules);
           resolve(result);
         }
       });
