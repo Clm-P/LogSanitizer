@@ -282,5 +282,14 @@
     "regexPattern": "(?<!\\d)(?:\\+\\d{1,3}[\\s\\-.]?)?(?:\\(\\d{2,4}\\)|\\d{2,4})[\\s\\-.]?\\d{3,4}[\\s\\-.]?\\d{4}(?!\\d)",
     "regexFlags": "g",
     "validatorId": "phone_digit_count"
+  },
+  {
+    "id": "username_pattern",
+    "name": "Usernames (patterns)",
+    "category": "user",
+    "prefix": "USER",
+    "priority": 70,
+    "regexPattern": "(?:\\b(?:user(?:name)?|login|account|owner|author|created[_-]?by|modified[_-]?by|assignee|admin|operator|caller)\\s*[=:]\\s*[\"']?([a-zA-Z0-9._\\-@]{2,40})[\"']?)|(?:\\b(?:for|by|of)\\s+user\\s+[\"']?(?!(?:from|with|on|at|in|is|was|has|not|account|session|name|password|id)\\b)([a-zA-Z0-9._\\-@]{2,40})[\"']?)",
+    "regexFlags": "gi"
   }
 ]
